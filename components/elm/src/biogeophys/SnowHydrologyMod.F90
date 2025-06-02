@@ -1374,7 +1374,7 @@ contains
 #ifdef MODAL_AER
               !mgf++ bugfix
               rds(c,2) = (rds(c,2)*(swliq(c,2)+swice(c,2)) + rds(c,1)*(zwliq+zwice))/(swliq(c,2)+swice(c,2)+zwliq+zwice)
-                if ((rds(c,2) < 30.) .or. (rds(c,2) > 1500.)) then
+                if ((rds(c,2) < 30.) .or. (rds(c,2) > 1501.)) then
                    write (iulog,*) "2. SNICAR ERROR: snow grain radius of",rds(c,2),rds(c,1)
                    write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,2), swice(c,2),zwliq, zwice
                    write (iulog,*) "layers ", msno
@@ -1490,7 +1490,7 @@ contains
 #ifdef MODAL_AER
               !mgf++ bugfix
               rds(c,3) = (rds(c,3)*(swliq(c,3)+swice(c,3)) + rds(c,2)*(zwliq+zwice))/(swliq(c,3)+swice(c,3)+zwliq+zwice)
-                if ((rds(c,3) < 30.) .or. (rds(c,3) > 1500.)) then
+                if ((rds(c,3) < 30.) .or. (rds(c,3) > 1501.)) then
 #ifndef _OPENACC
                    write (iulog,*) "3. SNICAR ERROR: snow grain radius of",rds(c,3),rds(c,2)
                    write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,3), swice(c,3),zwliq, zwice
@@ -1608,7 +1608,7 @@ contains
 #ifdef MODAL_AER
               !mgf++ bugfix
               rds(c,4) = (rds(c,4)*(swliq(c,4)+swice(c,4)) + rds(c,3)*(zwliq+zwice))/(swliq(c,4)+swice(c,4)+zwliq+zwice)
-                if ((rds(c,4) < 30.) .or. (rds(c,4) > 1500.)) then
+                if ((rds(c,4) < 30.) .or. (rds(c,4) > 1501.)) then
                    write (iulog,*) "4. SNICAR ERROR: snow grain radius of",rds(c,4),rds(c,3)
                    write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,4), swice(c,4),zwliq, zwice
                    write (iulog,*) "layers ", msno
@@ -1724,7 +1724,7 @@ contains
 #ifdef MODAL_AER
               !mgf++ bugfix
               rds(c,5) = (rds(c,5)*(swliq(c,5)+swice(c,5)) + rds(c,4)*(zwliq+zwice))/(swliq(c,5)+swice(c,5)+zwliq+zwice)
-                if ((rds(c,5) < 30.) .or. (rds(c,5) > 1500.)) then
+                if ((rds(c,5) < 30.) .or. (rds(c,5) > 1501.)) then
                    write (iulog,*) "5. SNICAR ERROR: snow grain radius of",rds(c,5),rds(c,4)
                    write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,5), swice(c,5),zwliq, zwice
                    write (iulog,*) "layers ", msno
