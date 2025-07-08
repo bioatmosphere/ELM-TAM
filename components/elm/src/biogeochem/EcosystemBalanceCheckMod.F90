@@ -570,7 +570,13 @@ contains
     real(r8):: dt             ! radiation time step (seconds)
 
     real(r8) :: leafp_to_litter_col(bounds%begc:bounds%endc)
+#if defined(TAM)
+    real(r8) :: froottp_to_litter_col(bounds%begc:bounds%endc)
+    real(r8) :: frootap_to_litter_col(bounds%begc:bounds%endc)
+    real(r8) :: frootmp_to_litter_col(bounds%begc:bounds%endc)
+#else
     real(r8) :: frootp_to_litter_col(bounds%begc:bounds%endc)
+#endif
     real(r8):: flux_mineralization_col(bounds%begc:bounds%endc)   !  local temperary variable
 
     integer:: kyr                     ! current year
@@ -613,7 +619,13 @@ contains
          totlitp                   => col_ps%totlitp                  , & ! Input:  [real(r8) (:)]  (gP/m2) total column phosphorus, incl veg
          sminp                     => col_ps%sminp                    , & ! Input:  [real(r8) (:)]  (gP/m2) total column phosphorus, incl veg
          leafp_to_litter           => veg_pf%leafp_to_litter         , & ! Input:  [real(r8) (:)]  soil mineral P pool loss to leaching (gP/m2/s)
+#if defined(TAM)
+         froottp_to_litter          => veg_pf%froottp_to_litter        , & ! Input:  [real(r8) (:)]  soil mineral P pool loss to leaching (gP/m2/s)
+         frootap_to_litter          => veg_pf%frootap_to_litter        , & ! Input:  [real(r8) (:)]  soil mineral P pool loss to leaching (gP/m2/s)
+         frootmp_to_litter          => veg_pf%frootmp_to_litter        , & ! Input:  [real(r8) (:)]  soil mineral P pool loss to leaching (gP/m2/s)
+#else
          frootp_to_litter          => veg_pf%frootp_to_litter        , & ! Input:  [real(r8) (:)]  soil mineral P pool loss to leaching (gP/m2/s)
+#endif
          sminp_to_plant            => col_pf%sminp_to_plant            , &
          cascade_receiver_pool     => decomp_cascade_con%cascade_receiver_pool   &
          )
@@ -627,9 +639,21 @@ contains
          call p2c(bounds,num_soilc,filter_soilc, &
               leafp_to_litter(bounds%begp:bounds%endp), &
               leafp_to_litter_col(bounds%begc:bounds%endc))
+#if defined(TAM)
+         call p2c(bounds,num_soilc,filter_soilc, &
+              froottp_to_litter(bounds%begp:bounds%endp), &
+              froottp_to_litter_col(bounds%begc:bounds%endc))
+         call p2c(bounds,num_soilc,filter_soilc, &
+              frootap_to_litter(bounds%begp:bounds%endp), &
+              frootap_to_litter_col(bounds%begc:bounds%endc))
+         call p2c(bounds,num_soilc,filter_soilc, &
+              frootmp_to_litter(bounds%begp:bounds%endp), &
+              frootmp_to_litter_col(bounds%begc:bounds%endc))
+#else
          call p2c(bounds,num_soilc,filter_soilc, &
               frootp_to_litter(bounds%begp:bounds%endp), &
               frootp_to_litter_col(bounds%begc:bounds%endc))
+#endif
       end if
 
       !! immobilization/mineralization in litter-to-SOM and SOM-to-SOM fluxes

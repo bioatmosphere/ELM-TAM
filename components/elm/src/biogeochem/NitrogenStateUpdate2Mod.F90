@@ -80,7 +80,13 @@ contains
 
          ! displayed pools
          veg_ns%leafn(p)              =  veg_ns%leafn(p)      - veg_nf%m_leafn_to_litter(p)      * dt
+#if defined(TAM)
+         veg_ns%froottn(p)             =  veg_ns%froottn(p)     - veg_nf%m_froottn_to_litter(p)     * dt
+         veg_ns%frootan(p)             =  veg_ns%frootan(p)     - veg_nf%m_frootan_to_litter(p)     * dt
+         veg_ns%frootmn(p)             =  veg_ns%frootmn(p)     - veg_nf%m_frootmn_to_litter(p)     * dt
+#else
          veg_ns%frootn(p)             =  veg_ns%frootn(p)     - veg_nf%m_frootn_to_litter(p)     * dt
+#endif
          veg_ns%livestemn(p)          =  veg_ns%livestemn(p)  - veg_nf%m_livestemn_to_litter(p)  * dt
          veg_ns%deadstemn(p)          =  veg_ns%deadstemn(p)  - veg_nf%m_deadstemn_to_litter(p)  * dt
          veg_ns%livecrootn(p)         =  veg_ns%livecrootn(p) - veg_nf%m_livecrootn_to_litter(p) * dt
@@ -163,7 +169,13 @@ contains
 
          ! displayed pools
          veg_ns%leafn(p)      = veg_ns%leafn(p)      - veg_nf%hrv_leafn_to_litter(p)      * dt
+#if defined(TAM)
+         veg_ns%froottn(p)     = veg_ns%froottn(p)   - veg_nf%hrv_froottn_to_litter(p)     * dt
+         veg_ns%frootan(p)     = veg_ns%frootan(p)   - veg_nf%hrv_frootan_to_litter(p)     * dt
+         veg_ns%frootmn(p)     = veg_ns%frootmn(p)   - veg_nf%hrv_frootmn_to_litter(p)     * dt
+#else
          veg_ns%frootn(p)     = veg_ns%frootn(p)     - veg_nf%hrv_frootn_to_litter(p)     * dt
+#endif
          veg_ns%livestemn(p)  = veg_ns%livestemn(p)  - veg_nf%hrv_livestemn_to_litter(p)  * dt
          veg_ns%deadstemn(p)  = veg_ns%deadstemn(p)  - veg_nf%hrv_deadstemn_to_prod10n(p) * dt
          veg_ns%deadstemn(p)  = veg_ns%deadstemn(p)  - veg_nf%hrv_deadstemn_to_prod100n(p)* dt

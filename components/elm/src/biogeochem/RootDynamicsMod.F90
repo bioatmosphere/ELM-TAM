@@ -89,9 +89,16 @@ contains
          ivt                    => veg_pp%itype                                , & ! Input  :  [integer (:)]  pft vegetation type
          pcolumn                => veg_pp%column                               , & ! Input  :  [integer (:)]  pft's column index
          croplive               => crop_vars%croplive_patch                    , & ! Input  :  [logical (:)]  flag, true if planted, not harvested
+#if defined(TAM)
+
+#else
          cpool_to_frootc        => veg_cf%cpool_to_frootc       , & ! Input  :  [real(r8) (:)] allocation to fine root C (gC/m2/s)
-         cpool_to_frootc_storage=> veg_cf%cpool_to_frootc_storage, & ! Input:  [real(r8) (:)] allocation to fine root C storage (gC/m2/s)
          frootc_xfer_to_frootc  => veg_cf%frootc_xfer_to_frootc , & ! Input  :  [real(r8) (:)] fine root C growth from storage (gC/m2/s)
+         frootc                 => veg_cs%frootc               , & ! Input  :  [real(r8) (:)]  (gC/m2) fine root C
+#endif
+         !cpool_to_frootc        => veg_cf%cpool_to_frootc       , & ! Input  :  [real(r8) (:)] allocation to fine root C (gC/m2/s)
+         cpool_to_frootc_storage=> veg_cf%cpool_to_frootc_storage, & ! Input:  [real(r8) (:)] allocation to fine root C storage (gC/m2/s)
+         !frootc_xfer_to_frootc  => veg_cf%frootc_xfer_to_frootc , & ! Input  :  [real(r8) (:)] fine root C growth from storage (gC/m2/s)
          onset_flag             => cnstate_vars%onset_flag_patch               , & ! Input  :  [real(r8) (:)] onset flag
          dormant_flag           => cnstate_vars%dormant_flag_patch             , & ! Input  :  [real(r8) (:)]  dormancy flag
          root_depth             => soilstate_vars%root_depth_patch             , & ! InOut  :  [real(r8) (:)] current root depth
@@ -103,7 +110,7 @@ contains
          soilpsi                => soilstate_vars%soilpsi_col                  , & ! Input  :  soil water potential in each soil layer (MPa)
          rresis                 => energyflux_vars%rresis_patch                , & ! Input  :  [real(r8) (:,:) ]  root soil water stress (resistance) by layer (0-1)
          sminn_vr               => col_ns%sminn_vr             , & ! Iniput :  [real(r8) (:,:)]  (gN/m3) soil mineral N
-         frootc                 => veg_cs%frootc               , & ! Input  :  [real(r8) (:)]  (gC/m2) fine root C
+         !frootc                 => veg_cs%frootc               , & ! Input  :  [real(r8) (:)]  (gC/m2) fine root C
          hui                    => crop_vars%gddplant_patch                    , & ! Input  :  [real(r8) (:)]  =gdd since planting (gddplant)
          huigrain               => cnstate_vars%huigrain_patch                 , & ! Input  :  [real(r8) (:)]  same to reach vegetative maturity
          livecrootc             => veg_cs%livecrootc           , & !
@@ -204,7 +211,9 @@ contains
       ! Now calculate the density of roots in each soil layer for each pft
       ! based on this timesteps growth
       !--------------------------------------------------------------------
+#if defined(TAM)
 
+#else
       do f = 1, num_soilp
          p = filter_soilp(f)
          c = pcolumn(p)
@@ -234,13 +243,15 @@ contains
 
          end do
       end do
-
+#endif
       !----------------------------------
       !Calculate root fraction
       !----------------------------------
 
       ! normalize the root fraction for each pft
+#if defined(TAM)
 
+#else
       do f = 1, num_soilp
          p = filter_soilp(f)
          c = pcolumn(p)
@@ -250,7 +261,7 @@ contains
             end if
          end do
       end do
-
+#endif
 
     end associate
 

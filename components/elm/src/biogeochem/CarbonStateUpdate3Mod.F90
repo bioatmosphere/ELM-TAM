@@ -110,8 +110,17 @@ contains
          ! displayed pools
          veg_cs%leafc(p)              = veg_cs%leafc(p)               - veg_cf%m_leafc_to_fire(p)            * dt
          veg_cs%leafc(p)              = veg_cs%leafc(p)               - veg_cf%m_leafc_to_litter_fire(p)     * dt
+#if defined(TAM)
+         veg_cs%froottc(p)            = veg_cs%froottc(p)              - veg_cf%m_froottc_to_fire(p)         * dt
+         veg_cs%froottc(p)            = veg_cs%froottc(p)              - veg_cf%m_froottc_to_litter_fire(p)  * dt
+         veg_cs%frootac(p)            = veg_cs%frootac(p)              - veg_cf%m_frootac_to_fire(p)         * dt
+         veg_cs%frootac(p)            = veg_cs%frootac(p)              - veg_cf%m_frootac_to_litter_fire(p)  * dt
+         veg_cs%frootmc(p)            = veg_cs%frootmc(p)              - veg_cf%m_frootmc_to_fire(p)         * dt
+         veg_cs%frootmc(p)            = veg_cs%frootmc(p)              - veg_cf%m_frootmc_to_litter_fire(p)  * dt
+#else
          veg_cs%frootc(p)             = veg_cs%frootc(p)              - veg_cf%m_frootc_to_fire(p)           * dt
          veg_cs%frootc(p)             = veg_cs%frootc(p)              - veg_cf%m_frootc_to_litter_fire(p)    * dt
+#endif
          veg_cs%livestemc(p)          = veg_cs%livestemc(p)           - veg_cf%m_livestemc_to_fire(p)        * dt
          veg_cs%livestemc(p)          = veg_cs%livestemc(p)           - veg_cf%m_livestemc_to_litter_fire(p) * dt
          veg_cs%deadstemc(p)          = veg_cs%deadstemc(p)           - veg_cf%m_deadstemc_to_fire(p)        * dt
