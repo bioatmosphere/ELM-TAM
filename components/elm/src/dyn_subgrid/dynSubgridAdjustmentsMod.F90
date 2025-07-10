@@ -55,7 +55,14 @@ contains
        dwt_leafc_seed,                      &
        dwt_deadstemc_seed,                  &
        conv_cflux,                          &
+#if defined(TAM)
+       dwt_froottc_to_litter,               &
+       dwt_frootac_to_litter,               &
+       dwt_frootmc_to_litter,               &
+#else
        dwt_frootc_to_litter,                &
+#endif
+       !dwt_frootc_to_litter,                &
        dwt_livecrootc_to_litter,            &
        dwt_deadcrootc_to_litter,            &
        prod10_cflux,                        &
@@ -82,7 +89,14 @@ contains
     real(r8)                       , intent(inout) :: dwt_leafc_seed
     real(r8)                       , intent(inout) :: dwt_deadstemc_seed
     real(r8)                       , intent(inout) :: conv_cflux
+#if defined(TAM)
+     real(r8)                       , intent(inout) :: dwt_froottc_to_litter
+     real(r8)                       , intent(inout) :: dwt_frootac_to_litter
+     real(r8)                       , intent(inout) :: dwt_frootmc_to_litter
+#else
     real(r8)                       , intent(inout) :: dwt_frootc_to_litter
+#endif
+    !real(r8)                       , intent(inout) :: dwt_frootc_to_litter
     real(r8)                       , intent(inout) :: dwt_livecrootc_to_litter
     real(r8)                       , intent(inout) :: dwt_deadcrootc_to_litter
     real(r8)                       , intent(inout) :: prod10_cflux
@@ -107,7 +121,14 @@ contains
       leafc          => veg_cs%leafc         (p), &
       leafc_storage  => veg_cs%leafc_storage (p), &
       leafc_xfer     => veg_cs%leafc_xfer    (p), &
+#if defined(TAM)
+      froottc         => veg_cs%froottc        (p)   ,&
+      frootac         => veg_cs%frootac        (p)   ,&
+      frootmc         => veg_cs%frootmc        (p)   ,&
+#else
       frootc         => veg_cs%frootc        (p)   ,&
+#endif
+      !frootc         => veg_cs%frootc        (p)   ,&
       frootc_storage => veg_cs%frootc_storage(p)  ,&
       frootc_xfer    => veg_cs%frootc_xfer   (p)  , &
       livestemc      => veg_cs%livestemc     (p)        ,&
@@ -178,13 +199,28 @@ contains
          flux_out_grc_area = conv_cflux                   , &
          seed              = seed_leafc_xfer_patch        , &
          seed_addition     = dwt_leafc_seed         )
+#if defined(TAM)
+    call update_patch_state(patch_state_updater,                 &
+         p ,c               , &
+         var               = froottc              , &
+         flux_out_col_area = dwt_froottc_to_litter )
 
+    call update_patch_state(patch_state_updater,                 &
+         p ,c               , &
+         var               = frootac              , &
+         flux_out_col_area = dwt_frootac_to_litter )
+
+    call update_patch_state(patch_state_updater,                 &
+         p ,c               , &
+         var               = frootmc              , &
+         flux_out_col_area = dwt_frootmc_to_litter )
+#else
     ! 4) FROOTC_PATCH
     call update_patch_state(patch_state_updater,                 &
          p ,c               , &
          var               = frootc              , &
          flux_out_col_area = dwt_frootc_to_litter )
-
+#endif
     ! 5) FROOTC_STORAGE_PATCH
     call update_patch_state(patch_state_updater,  &
          p, c                    , &
@@ -381,7 +417,13 @@ contains
 
     ! These fluxes are computed as negative quantities, but are expected to be positive,
     ! so flip the signs
+#if defined(TAM)
+       dwt_froottc_to_litter     = -1._r8 * dwt_froottc_to_litter
+       dwt_frootac_to_litter     = -1._r8 * dwt_frootac_to_litter
+       dwt_frootmc_to_litter     = -1._r8 * dwt_frootmc_to_litter
+#else
        dwt_frootc_to_litter     = -1._r8 * dwt_frootc_to_litter
+#endif
        dwt_livecrootc_to_litter = -1._r8 * dwt_livecrootc_to_litter
        dwt_deadcrootc_to_litter = -1._r8 * dwt_deadcrootc_to_litter
    end associate
@@ -490,7 +532,13 @@ contains
        dwt_deadstemn_seed,            &
        dwt_npool_seed,                &
        conv_nflux,                    &
+#if defined(TAM)
+       dwt_froottn_to_litter,          &
+       dwt_frootan_to_litter,          &
+       dwt_frootmn_to_litter,          &
+#else
        dwt_frootn_to_litter,          &
+#endif
        dwt_livecrootn_to_litter,      &
        dwt_deadcrootn_to_litter,      &
        prod10_nflux,                  &
@@ -518,7 +566,13 @@ contains
     real(r8)                       , intent(inout) :: dwt_deadstemn_seed
     real(r8)                       , intent(inout) :: dwt_npool_seed
     real(r8)                       , intent(inout) :: conv_nflux
+#if defined(TAM)
+     real(r8)                       , intent(inout) :: dwt_froottn_to_litter
+     real(r8)                       , intent(inout) :: dwt_frootan_to_litter
+     real(r8)                       , intent(inout) :: dwt_frootmn_to_litter
+#else
     real(r8)                       , intent(inout) :: dwt_frootn_to_litter
+#endif
     real(r8)                       , intent(inout) :: dwt_livecrootn_to_litter
     real(r8)                       , intent(inout) :: dwt_deadcrootn_to_litter
     real(r8)                       , intent(inout) :: prod10_nflux
@@ -542,7 +596,13 @@ contains
       leafn          => veg_ns%leafn         (p), &
       leafn_storage  => veg_ns%leafn_storage (p), &
       leafn_xfer     => veg_ns%leafn_xfer    (p), &
+#if defined(TAM)
+      froottn         => veg_ns%froottn        (p), &
+      frootan         => veg_ns%frootan        (p), &
+      frootmn         => veg_ns%frootmn        (p), &
+#else
       frootn         => veg_ns%frootn        (p), &
+#endif
       frootn_storage => veg_ns%frootn_storage(p), &
       frootn_xfer    => veg_ns%frootn_xfer   (p), &
       livestemn         => veg_ns%livestemn  (p), &
@@ -615,11 +675,27 @@ contains
          seed_addition     = dwt_leafn_seed          )
 
     ! 4) FROOTN_PATCH
+#if defined(TAM)
+     call update_patch_state(patch_state_updater,       &
+         p,c                    , &
+         var               = froottn          , &
+         flux_out_col_area = dwt_froottn_to_litter  )
+
+     call update_patch_state(patch_state_updater,       &
+         p,c                    , &
+         var               = frootan          , &
+         flux_out_col_area = dwt_frootan_to_litter  )
+
+     call update_patch_state(patch_state_updater,       &
+         p,c                    , &
+         var               = frootmn          , &
+         flux_out_col_area = dwt_frootmn_to_litter  )
+#else
     call update_patch_state(patch_state_updater,       &
          p,c                    , &
          var               = frootn          , &
          flux_out_col_area = dwt_frootn_to_litter  )
-
+#endif
     ! 5) FROOTN_STORAGE_PATCH
     call update_patch_state(patch_state_updater,       &
          p,c           , &
@@ -798,7 +874,13 @@ contains
 
     ! These fluxes are computed as negative quantities, but are expected to be positive,
     ! so flip the signs
+#if defined(TAM)
+    dwt_froottn_to_litter      = -1._r8 * dwt_froottn_to_litter
+    dwt_frootan_to_litter      = -1._r8 * dwt_frootan_to_litter
+    dwt_frootmn_to_litter      = -1._r8 * dwt_frootmn_to_litter
+#else
     dwt_frootn_to_litter      = -1._r8 * dwt_frootn_to_litter
+#endif
     dwt_livecrootn_to_litter  = -1._r8 * dwt_livecrootn_to_litter
     dwt_deadcrootn_to_litter  = -1._r8 * dwt_deadcrootn_to_litter
 
@@ -935,7 +1017,13 @@ contains
        dwt_deadstemp_seed,                  &
        dwt_ppool_seed,                      &
        conv_pflux,                          &
+#if defined(TAM)
+       dwt_froottp_to_litter,                &
+       dwt_frootap_to_litter,                &
+       dwt_frootmp_to_litter,                &
+#else
        dwt_frootp_to_litter,                &
+#endif
        dwt_livecrootp_to_litter,            &
        dwt_deadcrootp_to_litter,            &
        prod10_pflux,                        &
@@ -962,7 +1050,13 @@ contains
     real(r8)                         , intent(inout) :: dwt_deadstemp_seed
     real(r8)                         , intent(inout) :: dwt_ppool_seed
     real(r8)                         , intent(inout) :: conv_pflux
+#if defined(TAM)
+    real(r8)                         , intent(inout) :: dwt_froottp_to_litter
+    real(r8)                         , intent(inout) :: dwt_frootap_to_litter
+    real(r8)                         , intent(inout) :: dwt_frootmp_to_litter
+#else
     real(r8)                         , intent(inout) :: dwt_frootp_to_litter
+#endif
     real(r8)                         , intent(inout) :: dwt_livecrootp_to_litter
     real(r8)                         , intent(inout) :: dwt_deadcrootp_to_litter
     real(r8)                         , intent(inout) :: prod10_pflux
@@ -988,7 +1082,13 @@ contains
       leafp          => veg_ps%leafp         (p), &
       leafp_storage  => veg_ps%leafp_storage (p), &
       leafp_xfer     => veg_ps%leafp_xfer    (p), &
+#if defined(TAM)
+      froottp         => veg_ps%froottp        (p)        ,&
+      frootap         => veg_ps%frootap        (p)        ,&
+      frootmp         => veg_ps%frootmp        (p)        ,&
+#else
       frootp         => veg_ps%frootp        (p)        ,&
+#endif
       frootp_storage => veg_ps%frootp_storage(p)  ,&
       frootp_xfer    => veg_ps%frootp_xfer   (p) , &
       livestemp         => veg_ps%livestemp  (p)              ,&
@@ -1060,11 +1160,27 @@ contains
          seed_addition     = dwt_leafp_seed          )
 
     ! 4) FROOTP_PATCH
+#if defined(TAM)
+     call update_patch_state(patch_state_updater,       &
+         p,c                           , &
+         var               = froottp               , &
+         flux_out_col_area = dwt_froottp_to_litter  )
+
+     call update_patch_state(patch_state_updater,       &
+         p,c                           , &
+         var               = frootap               , &
+         flux_out_col_area = dwt_frootap_to_litter  )
+
+     call update_patch_state(patch_state_updater,       &
+         p,c                           , &
+         var               = frootmp               , &
+         flux_out_col_area = dwt_frootmp_to_litter  )
+#else
     call update_patch_state(patch_state_updater,       &
          p,c                           , &
          var               = frootp               , &
          flux_out_col_area = dwt_frootp_to_litter  )
-
+#endif
     ! 5) FROOTP_STORAGE_PATCH
     call update_patch_state(patch_state_updater,       &
          p,c                             , &
@@ -1243,7 +1359,13 @@ contains
 
     ! These fluxes are computed as negative quantities, but are expected to be positive,
     ! so flip the signs
+#if defined(TAM)
+    dwt_froottp_to_litter     = -1._r8 * dwt_froottp_to_litter
+    dwt_frootap_to_litter     = -1._r8 * dwt_frootap_to_litter
+    dwt_frootmp_to_litter     = -1._r8 * dwt_frootmp_to_litter
+#else
     dwt_frootp_to_litter     = -1._r8 * dwt_frootp_to_litter
+#endif
     dwt_livecrootp_to_litter = -1._r8 * dwt_livecrootp_to_litter
     dwt_deadcrootp_to_litter = -1._r8 * dwt_deadcrootp_to_litter
     end associate
