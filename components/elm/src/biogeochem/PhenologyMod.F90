@@ -1044,7 +1044,7 @@ contains
          frootn_xfer_to_frootn               =>    veg_nf%frootn_xfer_to_frootn         , & ! Output:  [real(r8) (:)   ]
          frootp_xfer_to_frootp               =>    veg_pf%frootp_xfer_to_frootp         , & ! Output:  [real(r8) (:)   ]
 #endif  
-         #froot_long                          =>    veg_vp%froot_long                                 , & ! Input:  [real(r8)  (:)   ]  fine root longevity (yrs)
+         !froot_long                          =>    veg_vp%froot_long                                 , & ! Input:  [real(r8)  (:)   ]  fine root longevity (yrs)
          woody                               =>    veg_vp%woody                                      , & ! Input:  [real(r8)  (:)   ]  binary flag for woody lifeform (1=woody, 0=not woody)
          stress_decid                        =>    veg_vp%stress_decid                               , & ! Input:  [real(r8)  (:)   ]  binary flag for stress-deciduous leaf habit (0 or 1)
 
@@ -3341,7 +3341,7 @@ contains
                frootmc_to_litter(p) = prev_frootmc_to_litter(p) + t1*(frootmc(p) - prev_frootmc_to_litter(p)*offset_counter(p))
 #else
                frootc_to_litter(p) = prev_frootc_to_litter(p) + t1*(frootc(p) - prev_frootc_to_litter(p)*offset_counter(p))
-#enndif
+#endif
             end if
 
             if ( nu_com .eq. 'RD') then
@@ -3573,7 +3573,7 @@ contains
 
          leafn             =>    veg_ns%leafn              , &
          !frootn            =>    veg_ns%frootn             , &
-         leafp             =>    veg_ps%leafp            , &
+         leafp             =>    veg_ps%leafp             &
          !frootp            =>    veg_ps%frootp             &
          )
 

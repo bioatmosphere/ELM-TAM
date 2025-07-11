@@ -2202,7 +2202,7 @@ contains
          grain_xsmr                   => veg_cf%grain_xsmr                      , &
          allocation_leaf              => veg_cf%allocation_leaf                 , &
          allocation_stem              => veg_cf%allocation_stem                 , &
-         allocation_froot             => veg_cf%allocation_froot                , &
+         !allocation_froot             => veg_cf%allocation_froot                , &
          xsmrpool_turnover            => veg_cf%xsmrpool_turnover               , &
          nsc_rtime                    => veg_vp%nsc_rtime                       , &
          supplement_to_plantn         => veg_nf%supplement_to_plantn            , &

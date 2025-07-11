@@ -476,7 +476,7 @@ contains
                   veg_cf%transfer_frootm_gr(p)*dt
 #else
          veg_cs%gresp_xfer(p) = veg_cs%gresp_xfer(p) - veg_cf%transfer_froot_gr(p)*dt
-#end
+#endif
          if (woody(ivt(p)) >= 1.0_r8) then
             veg_cs%gresp_xfer(p) = veg_cs%gresp_xfer(p) - veg_cf%transfer_livestem_gr(p)*dt
             veg_cs%gresp_xfer(p) = veg_cs%gresp_xfer(p) - veg_cf%transfer_deadstem_gr(p)*dt
