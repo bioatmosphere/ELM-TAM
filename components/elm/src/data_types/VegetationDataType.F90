@@ -6781,10 +6781,10 @@ module VegetationDataType
             avgflag='A', long_name='dead stem C transfer fire loss', &
             ptr_patch=this%m_deadstemc_xfer_to_fire, default='inactive')
 
-       this%m_frootc_to_fire(begp:endp) = spval
-       call hist_addfld1d (fname='M_FROOTC_TO_FIRE', units='gC/m^2/s', &
-            avgflag='A', long_name='fine root C fire loss', &
-            ptr_patch=this%m_frootc_to_fire, default='inactive')
+       !this%m_frootc_to_fire(begp:endp) = spval
+       !call hist_addfld1d (fname='M_FROOTC_TO_FIRE', units='gC/m^2/s', &
+       !     avgflag='A', long_name='fine root C fire loss', &
+       !     ptr_patch=this%m_frootc_to_fire, default='inactive')
 
        this%m_frootc_storage_to_fire(begp:endp) = spval
        call hist_addfld1d (fname='M_FROOTC_STORAGE_TO_FIRE', units='gC/m^2/s', &
