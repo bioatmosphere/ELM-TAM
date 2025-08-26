@@ -548,13 +548,19 @@ contains
 
         if (nu_com .ne. 'RD') then ! use new stoichiometry for eca and mic competition
            this%leafcn(m)     = leafcn_obs(m)
-           this%frootcn(m)    = frootcn_obs(m)
+           !this%frootcn(m)    = frootcn_obs(m)
            this%livewdcn(m)   = livewdcn_obs(m)
            this%deadwdcn(m)   = deadwdcn_obs(m)
            this%leafcp(m)     = leafcp_obs(m)
-           this%frootcp(m)    = frootcp_obs(m)
+           !this%frootcp(m)    = frootcp_obs(m)
            this%livewdcp(m)   = livewdcp_obs(m)
            this%deadwdcp(m)   = deadwdcp_obs(m)
+#if defined(TAM)
+
+#else
+            this%frootcn(m)    = frootcn_obs(m)
+            this%frootcp(m)    = frootcp_obs(m)
+#endif
         end if
     end do
 
