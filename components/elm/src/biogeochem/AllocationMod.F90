@@ -830,10 +830,19 @@ contains
                              fleafcn(ivt(p))))
                         livestemn_to_retransn(p) = t1 * ((livestemc(p) / livewdcn(ivt(p))) - (livestemc(p) / &
                              fstemcn(ivt(p))))
+#if defined(TAM)
+                        froottn_to_retransn(p) = 0._r8
+                        frootan_to_retransn(p) = 0._r8
+                        frootmn_to_retransn(p) = 0._r8
+                        if (ffrootcn(ivt(p)) > 0._r8) then
+                           froottn_to_retransn(p) = t1 * ((froottc(p) / froottcn(ivt(p))) - (froottc(p) / &
+                                ffrootcn(ivt(p))))
+#else
                         frootn_to_retransn(p) = 0._r8
                         if (ffrootcn(ivt(p)) > 0._r8) then
                            frootn_to_retransn(p) = t1 * ((frootc(p) / frootcn(ivt(p))) - (frootc(p) / &
                                 ffrootcn(ivt(p))))
+#endif
                         end if
                         grain_flag(p) = 1._r8
                      end if
@@ -849,6 +858,11 @@ contains
                end if
 
                f1 = aroot(p) / aleaf(p)
+#if defined(TAM)
+               f1t = f1 /3.0_r8
+               f1a = f1 /3.0_r8
+               f1m = f1 /3.0_r8
+#endif               
                f3 = astem(p) / aleaf(p)
                f5 = arepr(p) / aleaf(p)
                g1 = 0.25_r8
@@ -865,12 +879,22 @@ contains
                astem(p) = 1._r8 - arepr(p) - aleaf(p) - aroot(p)
 
                f1 = aroot(p) / aleaf(p)
+#if defined(TAM)
+               f1t = f1 /3.0_r8
+               f1a = f1 /3.0_r8
+               f1m = f1 /3.0_r8
+#endif
                f3 = astem(p) / aleaf(p)
                f5 = arepr(p) / aleaf(p)
                g1 = 0.25_r8
 
             else   ! .not croplive
                f1 = 0._r8
+#if defined(TAM)
+               f1t = f1 /3.0_r8
+               f1a = f1 /3.0_r8
+               f1m = f1 /3.0_r8
+#endif
                f3 = 0._r8
                f5 = 0._r8
                g1 = 0.25_r8

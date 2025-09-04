@@ -1487,11 +1487,11 @@ contains
        m_n_to_litr_met_fire(c,j)=m_n_to_litr_met_fire(c,j) + &
             ((m_leafn_to_litter_fire(p)*lf_flab(itype) &
             +m_leafn_storage_to_litter_fire(p) + m_npool_to_litter_fire(p) + &
-            m_leafn_xfer_to_litter_fire(p)+m_retransn_to_litter_fire(p)) &
-            *lprof_pj +(m_frootn_to_litter_fire(p)*fr_flab(itype) &
+            m_leafn_xfer_to_litter_fire(p)+m_retransn_to_litter_fire(p))*lprof_pj &
+            !+(m_frootn_to_litter_fire(p)*fr_flab(itype) &
             !+m_frootn_storage_to_litter_fire(p) + &
             !m_frootn_xfer_to_litter_fire(p))*fr_prof_pj &
-            !+(m_livestemn_storage_to_litter_fire(p) + &
+            +(m_livestemn_storage_to_litter_fire(p) + &
             +m_livestemn_xfer_to_litter_fire(p) &
             +m_deadstemn_storage_to_litter_fire(p) + &
             m_deadstemn_xfer_to_litter_fire(p))* st_prof_pj&
@@ -1537,11 +1537,11 @@ contains
          m_p_to_litr_met_fire(c,j)=m_p_to_litr_met_fire(c,j) + &
               ((m_leafp_to_litter_fire(p)*lf_flab(itype) &
               +m_leafp_storage_to_litter_fire(p) + m_ppool_to_litter_fire(p) + &
-              m_leafp_xfer_to_litter_fire(p)+m_retransp_to_litter_fire(p)) &
-              *lprof_pj +(m_frootp_to_litter_fire(p)*fr_flab(itype) &
+              m_leafp_xfer_to_litter_fire(p)+m_retransp_to_litter_fire(p))*lprof_pj & 
+              !+(m_frootp_to_litter_fire(p)*fr_flab(itype) &
               !+m_frootp_storage_to_litter_fire(p) + &
               !m_frootp_xfer_to_litter_fire(p))*fr_prof_pj &
-              !+(m_livestemp_storage_to_litter_fire(p) + &
+              +(m_livestemp_storage_to_litter_fire(p) + &
               +m_livestemp_xfer_to_litter_fire(p) &
               +m_deadstemp_storage_to_litter_fire(p) + &
               m_deadstemp_xfer_to_litter_fire(p))* st_prof_pj&

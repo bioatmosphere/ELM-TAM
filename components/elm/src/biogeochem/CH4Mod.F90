@@ -2468,7 +2468,7 @@ contains
     real(r8) :: porosmin               ! minimum aerenchyma porosity (unitless)(= 0.05_r8)
     real(r8) :: wfrac                  ! fraction (by crown area) of plants that are woody
     real(r8) :: poros_tiller 
-
+    real(r8) :: frootc_temp
     ! These pointers help us swap between big-leaf and fates boundary conditions
     real(r8), pointer :: annavg_agnpp_ptr
     real(r8), pointer :: annavg_bgnpp_ptr
@@ -2577,7 +2577,8 @@ contains
                annavg_agnpp_ptr => annavg_agnpp(p)
                annavg_bgnpp_ptr => annavg_bgnpp(p)
 #if defined(TAM)
-               frootc_ptr       => froottc(p) + frootac(p) + frootmc(p)
+               frootc_temp = froottc(p) + frootac(p) + frootmc(p)
+               frootc_ptr       = frootc_temp
 #else
                frootc_ptr       => frootc(p)
 #endif

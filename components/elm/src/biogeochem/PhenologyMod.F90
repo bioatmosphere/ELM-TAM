@@ -554,9 +554,9 @@ contains
          bglfr_frootm => cnstate_vars%bglfr_frootm_patch, & ! Output: [real(r8) (:) ]  background fine root litterfall (1/s)
 #else
          froot_long  => veg_vp%froot_long    , & ! Input:  [real(r8) (:) ]  fine root longevity (yrs)
-         bglfr_leaf  => cnstate_vars%bglfr_leaf_patch , & ! Output: [real(r8) (:) ]  background leaf litterfall rate (1/s)
-#endif
          bglfr_froot => cnstate_vars%bglfr_froot_patch, & ! Output: [real(r8) (:) ]  background fine root litterfall (1/s)
+#endif
+         bglfr_leaf  => cnstate_vars%bglfr_leaf_patch , & ! Output: [real(r8) (:) ]  background leaf litterfall rate (1/s)
          bgtr        => cnstate_vars%bgtr_patch  , & ! Output: [real(r8) (:) ]  background transfer growth rate (1/s)
          lgsf        => cnstate_vars%lgsf_patch    & ! Output: [real(r8) (:) ]  long growing season factor [0-1]
          )
@@ -1581,7 +1581,18 @@ contains
          ivt                =>    veg_pp%itype                                 , & ! Input:  [integer  (:) ]  pft vegetation type
 
          leaf_long          =>    veg_vp%leaf_long                             , & ! Input:  [real(r8) (:) ]  leaf longevity (yrs)
+#if defined(TAM)
+         froott_long         =>    veg_vp%froott_long                            , & ! Input:  [real(r8) (:) ]  fine root longevity (yrs)
+         bglfr_froott        =>    cnstate_vars%bglfr_froott_patch               , & ! Output: [real(r8) (:) ]  background fine root litterfall rate (1/s)
+         froota_long         =>    veg_vp%froota_long                            , & ! Input:  [real(r8) (:) ]  fine root longevity (yrs)
+         bglfr_froota        =>    cnstate_vars%bglfr_froota_patch               , & ! Output: [real(r8) (:) ]  background fine root litterfall rate (1/s)
+         frootm_long         =>    veg_vp%frootm_long                            , & ! Input:  [real(r8) (:) ]  fine root longevity (yrs)
+         bglfr_frootm        =>    cnstate_vars%bglfr_frootm_patch               , & ! Output: [real(r8) (:) ]  background fine root litterfall rate (1/s)
+#else
          froot_long         =>    veg_vp%froot_long                            , & ! Input:  [real(r8) (:) ]  fine root longevity (yrs)
+         bglfr_froot        =>    cnstate_vars%bglfr_froot_patch               , & ! Output: [real(r8) (:) ]  background fine root litterfall rate (1/s)
+#endif
+         !froot_long         =>    veg_vp%froot_long                            , & ! Input:  [real(r8) (:) ]  fine root longevity (yrs)
 
          leafcn             =>    veg_vp%leafcn                                , & ! Input:  [real(r8) (:) ]  leaf C:N (gC/gN)
          manunitro          =>    veg_vp%manunitro             , & ! Input: max manure to apply (kgN/m2) 
@@ -1610,7 +1621,7 @@ contains
          hdidx              =>    cnstate_vars%hdidx_patch                     , & ! Output: [real(r8) (:) ]  cold hardening index?
          vf                 =>    crop_vars%vf_patch                           , & ! Output: [real(r8) (:) ]  vernalization factor
          bglfr_leaf         =>    cnstate_vars%bglfr_leaf_patch                , & ! Output: [real(r8) (:) ]  background leaf litterfall rate (1/s)
-         bglfr_froot        =>    cnstate_vars%bglfr_froot_patch               , & ! Output: [real(r8) (:) ]  background fine root litterfall rate (1/s)
+         !bglfr_froot        =>    cnstate_vars%bglfr_froot_patch               , & ! Output: [real(r8) (:) ]  background fine root litterfall rate (1/s)
          bgtr               =>    cnstate_vars%bgtr_patch                      , & ! Output: [real(r8) (:) ]  background transfer growth rate (1/s)
          lgsf               =>    cnstate_vars%lgsf_patch                      , & ! Output: [real(r8) (:) ]  long growing season factor [0-1]
          onset_flag         =>    cnstate_vars%onset_flag_patch                , & ! Output: [real(r8) (:) ]  onset flag
@@ -1666,7 +1677,14 @@ contains
          ! background litterfall and transfer rates; long growing season factor
 
          bglfr_leaf(p)  = 0._r8 ! this value changes later in a crop's life cycle
+#if defined(TAM)
+         bglfr_froott(p) = 0._r8 ! this value changes later in a crop's life cycle
+         bglfr_froota(p) = 0._r8 ! this value changes later in a crop's life cycle
+         bglfr_frootm(p) = 0._r8 ! this value changes later in a crop's life cycle
+#else
          bglfr_froot(p) = 0._r8 ! this value changes later in a crop's life cycle
+#endif
+         !bglfr_froot(p) = 0._r8 ! this value changes later in a crop's life cycle
          bgtr(p)  = 0._r8
          lgsf(p)  = 0._r8
 
@@ -2054,7 +2072,14 @@ contains
 
             else if (hui(p) >= huigrain(p)) then
                bglfr_leaf(p)  = 1._r8/(leaf_long(ivt(p))*dayspyr*secspday)
+#if defined(TAM)
+               bglfr_froott(p) = 1._r8/(froott_long(ivt(p))*dayspyr*secspday)
+               bglfr_froota(p) = 1._r8/(froota_long(ivt(p))*dayspyr*secspday)
+               bglfr_frootm(p) = 1._r8/(frootm_long(ivt(p))*dayspyr*secspday)
+#else
                bglfr_froot(p) = 1._r8/(froot_long(ivt(p))*dayspyr*secspday)
+#endif               
+               !bglfr_froot(p) = 1._r8/(froot_long(ivt(p))*dayspyr*secspday)
             end if
 
             ! continue fertilizer application while in phase 2;
@@ -2124,7 +2149,18 @@ contains
          t_soisno           =>    col_es%t_soisno                     , & ! Input:  [real(r8) (:,:) ]  soil temperature (Kelvin)  (-nlevsno+1:nlevgrnd)
 
          leaf_long          =>    veg_vp%leaf_long                    , & ! Input:  [real(r8) (:) ]  leaf longevity (yrs)
+   #if defined(TAM)
+         froott_long         =>    veg_vp%froott_long                   , & ! Input:  [real(r8) (:) ]  fine root longevity (yrs)
+         bglfr_froott        =>    cnstate_vars%bglfr_froott_patch      , & ! Output: [real(r8) (:) ]  background fine root litterfall rate (1/s)
+         froota_long         =>    veg_vp%froota_long                   , & ! Input:  [real(r8) (:) ]  fine root longevity (yrs)
+         bglfr_froota        =>    cnstate_vars%bglfr_froota_patch      , & ! Output: [real(r8) (:) ]  background fine root litterfall rate (1/s)
+         frootm_long         =>    veg_vp%frootm_long                   , & ! Input:  [real(r8) (:) ]  fine root longevity (yrs)
+         bglfr_frootm        =>    cnstate_vars%bglfr_frootm_patch      , & ! Output: [real(r8) (:) ]  background fine root litterfall rate (1/s)
+#else
          froot_long         =>    veg_vp%froot_long                   , & ! Input:  [real(r8) (:) ]  fine root longevity (yrs)
+         bglfr_froot        =>    cnstate_vars%bglfr_froot_patch      , & ! Output: [real(r8) (:) ]  background fine root litterfall rate (1/s)
+#endif
+         !froot_long         =>    veg_vp%froot_long                   , & ! Input:  [real(r8) (:) ]  fine root longevity (yrs)
          leafcn             =>    veg_vp%leafcn                       , & ! Input:  [real(r8) (:) ]  leaf C:N (gC/gN)
          leafcp             =>    veg_vp%leafcp                       , & ! Input:  [real(r8) (:) ]  leaf C:P (gC/gP)
          manunitro          =>    veg_vp%manunitro                    , & ! Input: max manure to apply (kgN/m2) 
@@ -2140,7 +2176,7 @@ contains
          dmyield            =>    crop_vars%dmyield_patch             , & ! Output: [real(r8) ):) ]  dry matter harvested crop (t/ha)
 
          bglfr_leaf         =>    cnstate_vars%bglfr_leaf_patch       , & ! Output: [real(r8) (:) ]  background leaf litterfall rate (1/s)
-         bglfr_froot        =>    cnstate_vars%bglfr_froot_patch      , & ! Output: [real(r8) (:) ]  background fine root litterfall rate (1/s)
+         !bglfr_froot        =>    cnstate_vars%bglfr_froot_patch      , & ! Output: [real(r8) (:) ]  background fine root litterfall rate (1/s)
          bgtr               =>    cnstate_vars%bgtr_patch             , & ! Output: [real(r8) (:) ]  background transfer growth rate (1/s)
          lgsf               =>    cnstate_vars%lgsf_patch             , & ! Output: [real(r8) (:) ]  long growing season factor [0-1]
          onset_flag         =>    cnstate_vars%onset_flag_patch       , & ! Output: [real(r8) (:) ]  onset flag
@@ -2185,7 +2221,14 @@ contains
 
          ! background litterfall and transfer rates; long growing season factor
          bglfr_leaf(p)  = 0._r8 ! this value changes later in a crop's life cycle
+#if defined(TAM)
+         bglfr_froott(p) = 0._r8 ! this value changes later in a crop's life cycle
+         bglfr_froota(p) = 0._r8 ! this value changes later in a crop's life cycle
+         bglfr_frootm(p) = 0._r8 ! this value changes later in a crop's life cycle
+#else
          bglfr_froot(p) = 0._r8 ! this value changes later in a crop's life cycle
+#endif
+         !bglfr_froot(p) = 0._r8 ! this value changes later in a crop's life cycle
          bgtr(p)  = 0._r8
          lgsf(p)  = 0._r8
 
@@ -2246,7 +2289,14 @@ contains
                   if (harvday(p) >= NOT_Harvested) harvday(p) = jday
                   croplive(p) = .false.
                   bglfr_leaf(p)  = 1._r8/(leaf_long(ivt(p)) * dayspyr * secspday)
+#if defined(TAM)
+                  bglfr_froott(p) = 1._r8/(froott_long(ivt(p)) * dayspyr * secspday)
+                  bglfr_froota(p) = 1._r8/(froota_long(ivt(p)) * dayspyr * secspday)
+                  bglfr_frootm(p) = 1._r8/(frootm_long(ivt(p)) * dayspyr * secspday)
+#else
                   bglfr_froot(p) = 1._r8/(froot_long(ivt(p)) * dayspyr * secspday)
+#endif
+                  !bglfr_froot(p) = 1._r8/(froot_long(ivt(p)) * dayspyr * secspday)
 
                end if
             end if    ! onset flag
