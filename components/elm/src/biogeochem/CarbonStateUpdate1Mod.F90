@@ -99,33 +99,56 @@ contains
 
           do j = 1,nlevdecomp
 
+#if defined(TAM)
+             col_cs%decomp_cpools_vr(c,j,i_met_lit) = col_cs%decomp_cpools_vr(c,j,i_met_lit) + &
+                  col_cf%dwt_froottc_to_litr_met_c(c,j) * dt + &
+                  col_cf%dwt_frootac_to_litr_met_c(c,j) * dt + &
+                  col_cf%dwt_frootmc_to_litr_met_c(c,j) * dt
+             col_cs%decomp_cpools_vr(c,j,i_cel_lit) = col_cs%decomp_cpools_vr(c,j,i_cel_lit) + &
+                  col_cf%dwt_froottc_to_litr_cel_c(c,j) * dt + &
+                  col_cf%dwt_frootac_to_litr_cel_c(c,j) * dt + &
+                  col_cf%dwt_frootmc_to_litr_cel_c(c,j) * dt
+             col_cs%decomp_cpools_vr(c,j,i_lig_lit) = col_cs%decomp_cpools_vr(c,j,i_lig_lit) + &
+                  col_cf%dwt_froottc_to_litr_lig_c(c,j) * dt + &
+                  col_cf%dwt_frootac_to_litr_lig_c(c,j) * dt + &
+                  col_cf%dwt_frootmc_to_litr_lig_c(c,j) * dt
+#else
              col_cs%decomp_cpools_vr(c,j,i_met_lit) = col_cs%decomp_cpools_vr(c,j,i_met_lit) + &
                   col_cf%dwt_frootc_to_litr_met_c(c,j) * dt
              col_cs%decomp_cpools_vr(c,j,i_cel_lit) = col_cs%decomp_cpools_vr(c,j,i_cel_lit) + &
                   col_cf%dwt_frootc_to_litr_cel_c(c,j) * dt
              col_cs%decomp_cpools_vr(c,j,i_lig_lit) = col_cs%decomp_cpools_vr(c,j,i_lig_lit) + &
                   col_cf%dwt_frootc_to_litr_lig_c(c,j) * dt
+#endif
              col_cs%decomp_cpools_vr(c,j,i_cwd) = col_cs%decomp_cpools_vr(c,j,i_cwd) + &
                   ( col_cf%dwt_livecrootc_to_cwdc(c,j) + col_cf%dwt_deadcrootc_to_cwdc(c,j) ) * dt
 
              if (use_c13) then
+#if defined(TAM)
+
+#else
                 c13_col_cs%decomp_cpools_vr(c,j,i_met_lit) = c13_col_cs%decomp_cpools_vr(c,j,i_met_lit) + &
                      c13_col_cf%dwt_frootc_to_litr_met_c(c,j) * dt
                 c13_col_cs%decomp_cpools_vr(c,j,i_cel_lit) = c13_col_cs%decomp_cpools_vr(c,j,i_cel_lit) + &
                      c13_col_cf%dwt_frootc_to_litr_cel_c(c,j) * dt
                 c13_col_cs%decomp_cpools_vr(c,j,i_lig_lit) = c13_col_cs%decomp_cpools_vr(c,j,i_lig_lit) + &
                      c13_col_cf%dwt_frootc_to_litr_lig_c(c,j) * dt
+#endif
                 c13_col_cs%decomp_cpools_vr(c,j,i_cwd) = c13_col_cs%decomp_cpools_vr(c,j,i_cwd) + &
                      ( c13_col_cf%dwt_livecrootc_to_cwdc(c,j) + c13_col_cf%dwt_deadcrootc_to_cwdc(c,j) ) * dt
              end if
 
              if (use_c14) then
+#if defined(TAM)
+
+#else
                 c14_col_cs%decomp_cpools_vr(c,j,i_met_lit) = c14_col_cs%decomp_cpools_vr(c,j,i_met_lit) + &
                      c14_col_cf%dwt_frootc_to_litr_met_c(c,j) * dt
                 c14_col_cs%decomp_cpools_vr(c,j,i_cel_lit) = c14_col_cs%decomp_cpools_vr(c,j,i_cel_lit) + &
                      c14_col_cf%dwt_frootc_to_litr_cel_c(c,j) * dt
                 c14_col_cs%decomp_cpools_vr(c,j,i_lig_lit) = c14_col_cs%decomp_cpools_vr(c,j,i_lig_lit) + &
                      c14_col_cf%dwt_frootc_to_litr_lig_c(c,j) * dt
+#endif
                 c14_col_cs%decomp_cpools_vr(c,j,i_cwd) = c14_col_cs%decomp_cpools_vr(c,j,i_cwd) + &
                      ( c14_col_cf%dwt_livecrootc_to_cwdc(c,j) + c14_col_cf%dwt_deadcrootc_to_cwdc(c,j) ) * dt
              end if
@@ -272,8 +295,19 @@ contains
          ! phenology: transfer growth fluxes
          veg_cs%leafc(p)           = veg_cs%leafc(p)       + veg_cf%leafc_xfer_to_leafc(p)*dt
          veg_cs%leafc_xfer(p)      = veg_cs%leafc_xfer(p)  - veg_cf%leafc_xfer_to_leafc(p)*dt
+#if defined(TAM)
+         veg_cs%froottc(p)         = veg_cs%froottc(p)      + veg_cf%frootc_xfer_to_froottc(p)*dt
+         veg_cs%frootac(p)         = veg_cs%frootac(p)      + veg_cf%frootc_xfer_to_frootac(p)*dt
+         veg_cs%frootmc(p)         = veg_cs%frootmc(p)      + veg_cf%frootc_xfer_to_frootmc(p)*dt
+
+         veg_cs%frootc_xfer(p)     = veg_cs%frootc_xfer(p) - & 
+               veg_cf%frootc_xfer_to_froottc(p)*dt - &
+               veg_cf%frootc_xfer_to_frootac(p)*dt - &
+               veg_cf%frootc_xfer_to_frootmc(p)*dt
+#else
          veg_cs%frootc(p)          = veg_cs%frootc(p)      + veg_cf%frootc_xfer_to_frootc(p)*dt
          veg_cs%frootc_xfer(p)     = veg_cs%frootc_xfer(p) - veg_cf%frootc_xfer_to_frootc(p)*dt
+#endif
          if (woody(ivt(p)) >= 1.0_r8) then
                 veg_cs%livestemc(p)       = veg_cs%livestemc(p)       + veg_cf%livestemc_xfer_to_livestemc(p)*dt
                 veg_cs%livestemc_xfer(p)  = veg_cs%livestemc_xfer(p)  - veg_cf%livestemc_xfer_to_livestemc(p)*dt
@@ -294,8 +328,13 @@ contains
 
          ! phenology: litterfall fluxes
          veg_cs%leafc(p) = veg_cs%leafc(p) - veg_cf%leafc_to_litter(p)*dt
+#if defined(TAM)
+         veg_cs%froottc(p) = veg_cs%froottc(p) - veg_cf%froottc_to_litter(p)*dt
+         veg_cs%frootac(p) = veg_cs%frootac(p) - veg_cf%frootac_to_litter(p)*dt
+         veg_cs%frootmc(p) = veg_cs%frootmc(p) - veg_cf%frootmc_to_litter(p)*dt
+#else
          veg_cs%frootc(p) = veg_cs%frootc(p) - veg_cf%frootc_to_litter(p)*dt
-
+#endif
          ! livewood turnover fluxes
          if (woody(ivt(p)) >= 1.0_r8) then
             veg_cs%livestemc(p)  = veg_cs%livestemc(p)  - veg_cf%livestemc_to_deadstemc(p)*dt
@@ -314,7 +353,14 @@ contains
          ! maintenance respiration fluxes from cpool
          veg_cs%cpool(p) = veg_cs%cpool(p) - veg_cf%cpool_to_xsmrpool(p)*dt
          veg_cs%cpool(p) = veg_cs%cpool(p) - veg_cf%leaf_curmr(p)*dt
+#if defined(TAM)
+         veg_cs%cpool(p) = veg_cs%cpool(p) - &
+               veg_cf%froott_curmr(p)*dt - &
+               veg_cf%froota_curmr(p)*dt - &
+               veg_cf%frootm_curmr(p)*dt
+#else
          veg_cs%cpool(p) = veg_cs%cpool(p) - veg_cf%froot_curmr(p)*dt
+#endif
          if (woody(ivt(p)) >= 1.0_r8) then
             veg_cs%cpool(p) = veg_cs%cpool(p) - veg_cf%livestem_curmr(p)*dt
             veg_cs%cpool(p) = veg_cs%cpool(p) - veg_cf%livecroot_curmr(p)*dt
@@ -329,7 +375,14 @@ contains
          ! maintenance respiration fluxes from xsmrpool
          veg_cs%xsmrpool(p) = veg_cs%xsmrpool(p) + veg_cf%cpool_to_xsmrpool(p)*dt
          veg_cs%xsmrpool(p) = veg_cs%xsmrpool(p) - veg_cf%leaf_xsmr(p)*dt
+#if defined(TAM)
+         veg_cs%xsmrpool(p) = veg_cs%xsmrpool(p) - &
+                  veg_cf%froott_xsmr(p)*dt       - &
+                  veg_cf%froota_xsmr(p)*dt       - &
+                  veg_cf%frootm_xsmr(p)*dt
+#else
          veg_cs%xsmrpool(p) = veg_cs%xsmrpool(p) - veg_cf%froot_xsmr(p)*dt
+#endif
          if (nu_com .ne. 'RD') then
             veg_cs%xsmrpool(p) = veg_cs%xsmrpool(p) - veg_cf%xsmrpool_turnover(p)*dt
          end if
@@ -351,8 +404,18 @@ contains
          veg_cs%leafc(p)           = veg_cs%leafc(p)          + veg_cf%cpool_to_leafc(p)*dt
          veg_cs%cpool(p)           = veg_cs%cpool(p)          - veg_cf%cpool_to_leafc_storage(p)*dt
          veg_cs%leafc_storage(p)   = veg_cs%leafc_storage(p)  + veg_cf%cpool_to_leafc_storage(p)*dt
+#if defined(TAM)
+         veg_cs%cpool(p)           = veg_cs%cpool(p) - &       
+                 veg_cf%cpool_to_froottc(p)*dt        - &
+                 veg_cf%cpool_to_frootac(p)*dt        - &
+                 veg_cf%cpool_to_frootmc(p)*dt
+         veg_cs%froottc(p)          = veg_cs%froottc(p) + veg_cf%cpool_to_froottc(p)*dt
+         veg_cs%frootac(p)          = veg_cs%frootac(p) + veg_cf%cpool_to_frootac(p)*dt
+         veg_cs%frootmc(p)          = veg_cs%frootmc(p) + veg_cf%cpool_to_frootmc(p)*dt
+#else
          veg_cs%cpool(p)           = veg_cs%cpool(p)          - veg_cf%cpool_to_frootc(p)*dt
          veg_cs%frootc(p)          = veg_cs%frootc(p)         + veg_cf%cpool_to_frootc(p)*dt
+#endif
          veg_cs%cpool(p)           = veg_cs%cpool(p)          - veg_cf%cpool_to_frootc_storage(p)*dt
          veg_cs%frootc_storage(p)  = veg_cs%frootc_storage(p) + veg_cf%cpool_to_frootc_storage(p)*dt
          if (woody(ivt(p)) >= 1.0_r8) then
@@ -386,7 +449,13 @@ contains
 
          ! growth respiration fluxes for current growth
          veg_cs%cpool(p) = veg_cs%cpool(p) - veg_cf%cpool_leaf_gr(p)*dt
+#if defined(TAM)
+         veg_cs%cpool(p) = veg_cs%cpool(p) - veg_cf%cpool_froott_gr(p)*dt - &
+                                             veg_cf%cpool_froota_gr(p)*dt - &
+                                             veg_cf%cpool_frootm_gr(p)*dt
+#else
          veg_cs%cpool(p) = veg_cs%cpool(p) - veg_cf%cpool_froot_gr(p)*dt
+#endif
          if (woody(ivt(p)) >= 1.0_r8) then
             veg_cs%cpool(p) = veg_cs%cpool(p) - veg_cf%cpool_livestem_gr(p)*dt
             veg_cs%cpool(p) = veg_cs%cpool(p) - veg_cf%cpool_deadstem_gr(p)*dt
@@ -400,7 +469,14 @@ contains
 
          ! growth respiration for transfer growth
          veg_cs%gresp_xfer(p) = veg_cs%gresp_xfer(p) - veg_cf%transfer_leaf_gr(p)*dt
+#if defined(TAM)
+         veg_cs%gresp_xfer(p) = veg_cs%gresp_xfer(p) - &
+                  veg_cf%transfer_froott_gr(p)*dt    - &
+                  veg_cf%transfer_froota_gr(p)*dt    - &
+                  veg_cf%transfer_frootm_gr(p)*dt
+#else
          veg_cs%gresp_xfer(p) = veg_cs%gresp_xfer(p) - veg_cf%transfer_froot_gr(p)*dt
+#endif
          if (woody(ivt(p)) >= 1.0_r8) then
             veg_cs%gresp_xfer(p) = veg_cs%gresp_xfer(p) - veg_cf%transfer_livestem_gr(p)*dt
             veg_cs%gresp_xfer(p) = veg_cs%gresp_xfer(p) - veg_cf%transfer_deadstem_gr(p)*dt

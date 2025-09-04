@@ -594,7 +594,11 @@ contains
 
     associate(                                                              &
          ! fine root vertical profile Zeng, X. 2001. Global vegetation root distribution for land modeling. J. Hydrometeor. 2:525-530
+#if defined(TAM)
+
+#else
          froot_prof           => cnstate_vars%froot_prof_patch            , &
+#endif
          biochem_pmin_vr      => col_pf%biochem_pmin_vr  , &
          biochem_pmin_ppools_vr_col  => col_pf%biochem_pmin_ppools_vr ,&
          biochem_pmin_to_ecosysp_vr_col => col_pf%biochem_pmin_to_ecosysp_vr , &
@@ -670,8 +674,12 @@ contains
                     !lamda_up = npimbalance(p) ! partial_vcmax/partial_lpc / partial_vcmax/partial_lnc
                     lamda_up = cp_scalar(p)/max(cn_scalar(p),1e-20_r8)
                     lamda_up = min(max(lamda_up,0.0_r8), 150.0_r8)
+#if defined(TAM)
+
+#else
                     ptase_tmp = vmax_ptase(veg_pp%itype(p)) * froot_prof(p,j) * max(lamda_up - lamda_ptase, 0.0_r8) / &
                          (km_ptase + max(lamda_up - lamda_ptase, 0.0_r8))
+#endif
                     if (NFIX_PTASE_plant) then
                        biochem_pmin_to_plant_vr_patch(p,j) = ptase_tmp * alpha_ptase(veg_pp%itype(p))
                        biochem_pmin_vr(c,j) = biochem_pmin_vr(c,j) + ptase_tmp * veg_pp%wtcol(p) * &

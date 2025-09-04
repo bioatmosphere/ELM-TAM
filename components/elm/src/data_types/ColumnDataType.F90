@@ -188,7 +188,13 @@ module ColumnDataType
     real(r8), pointer :: fuelc_crop           (:)    => null() ! fuel avalability factor for Reg.A (0-1)
     real(r8), pointer :: decomp_cpools_vr     (:,:,:)=> null() ! (gC/m3) vertically-resolved decomposing (litter, cwd, soil) c pools
     real(r8), pointer :: ctrunc_vr            (:,:)  => null() ! (gC/m3) vertically-resolved column-level sink for C truncation
+#if defined(TAM)
+    real(r8), pointer :: froottc              (:)    => null() ! (gC/m2) column-level C pool for fine root
+    real(r8), pointer :: frootac              (:)    => null() ! (gC/m2) column-level C pool for fine root
+    real(r8), pointer :: frootmc              (:)    => null() ! (gC/m2) column-level C pool for fine root
+#else
     real(r8), pointer :: frootc               (:)    => null() ! (gC/m2) column-level C pool for fine root
+#endif
     real(r8), pointer :: seedc                (:)    => null() ! (gC/m2) column-level pool for seeding new Patches
     real(r8), pointer :: prod1c               (:)    => null() ! (gC/m2) crop product C pool, 1-year lifespan
     real(r8), pointer :: prod10c              (:)    => null() ! (gC/m2) wood product C pool, 10-year lifespan
@@ -565,6 +571,21 @@ module ColumnDataType
     real(r8), pointer :: phenology_c_to_litr_met_c             (:,:)   => null() ! C fluxes associated with phenology (litterfall and crop) to litter metabolic pool (gC/m3/s)
     real(r8), pointer :: phenology_c_to_litr_cel_c             (:,:)   => null() ! C fluxes associated with phenology (litterfall and crop) to litter cellulose pool (gC/m3/s)
     real(r8), pointer :: phenology_c_to_litr_lig_c             (:,:)   => null() ! C fluxes associated with phenology (litterfall and crop) to litter lignin pool (gC/m3/s)
+#if defined(TAM)
+    real(r8), pointer :: dwt_froottc_to_litr_met_c              (:,:)   => null() ! (gC/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_froottc_to_litr_cel_c              (:,:)   => null() ! (gC/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_froottc_to_litr_lig_c              (:,:)   => null() ! (gC/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootac_to_litr_met_c              (:,:)   => null() ! (gC/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootac_to_litr_cel_c              (:,:)   => null() ! (gC/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootac_to_litr_lig_c              (:,:)   => null() ! (gC/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootmc_to_litr_met_c              (:,:)   => null() ! (gC/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootmc_to_litr_cel_c              (:,:)   => null() ! (gC/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootmc_to_litr_lig_c              (:,:)   => null() ! (gC/m3/s) fine root to litter due to landcover change
+#else
+    real(r8), pointer :: dwt_frootc_to_litr_met_c              (:,:)   => null() ! (gC/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootc_to_litr_cel_c              (:,:)   => null() ! (gC/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootc_to_litr_lig_c              (:,:)   => null() ! (gC/m3/s) fine root to litter due to landcover change
+#endif
     ! gap mortality
     real(r8), pointer :: gap_mortality_c_to_litr_met_c         (:,:)   => null() ! C fluxes associated with gap mortality to litter metabolic pool (gC/m3/s)
     real(r8), pointer :: gap_mortality_c_to_litr_cel_c         (:,:)   => null() ! C fluxes associated with gap mortality to litter cellulose pool (gC/m3/s)
@@ -595,9 +616,9 @@ module ColumnDataType
     real(r8), pointer :: hrv_deadstemc_to_prod100c             (:)     => null() ! dead stem C harvest mortality to 100-year product pool (gC/m2/s)
     real(r8), pointer :: hrv_cropc_to_prod1c                   (:)     => null() ! crop C harvest mortality to 1-year product pool (gC/m2/s)
     ! dynamic LULCC fluxes: land cover change
-    real(r8), pointer :: dwt_frootc_to_litr_met_c              (:,:)   => null() ! (gC/m3/s) fine root to litter due to landcover change
-    real(r8), pointer :: dwt_frootc_to_litr_cel_c              (:,:)   => null() ! (gC/m3/s) fine root to litter due to landcover change
-    real(r8), pointer :: dwt_frootc_to_litr_lig_c              (:,:)   => null() ! (gC/m3/s) fine root to litter due to landcover change
+    !real(r8), pointer :: dwt_frootc_to_litr_met_c              (:,:)   => null() ! (gC/m3/s) fine root to litter due to landcover change
+    !real(r8), pointer :: dwt_frootc_to_litr_cel_c              (:,:)   => null() ! (gC/m3/s) fine root to litter due to landcover change
+    !real(r8), pointer :: dwt_frootc_to_litr_lig_c              (:,:)   => null() ! (gC/m3/s) fine root to litter due to landcover change
     real(r8), pointer :: dwt_livecrootc_to_cwdc                (:,:)   => null() ! (gC/m3/s) live coarse root to CWD due to landcover change
     real(r8), pointer :: dwt_deadcrootc_to_cwdc                (:,:)   => null() ! (gC/m3/s) dead coarse root to CWD due to landcover change
     real(r8), pointer :: dwt_slash_cflux                       (:)     => null() ! (gC/m2/s) conversion slash flux due to landcover change
@@ -690,6 +711,21 @@ module ColumnDataType
     real(r8), pointer :: harvest_n_to_litr_lig_n               (:,:)   => null() ! N fluxes associated with harvest to litter lignin pool (gN/m3/s)
     real(r8), pointer :: harvest_n_to_cwdn                     (:,:)   => null() ! N fluxes associated with harvest to CWD pool (gN/m3/s)
     real(r8), pointer :: hrv_cropn_to_prod1n                   (:)     => null() ! crop N harvest mortality to 1-yr product pool (gN/m2/s)
+#if defined(TAM)
+    real(r8), pointer :: dwt_froottn_to_litr_met_n              (:,:)   => null() ! (gN/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_froottn_to_litr_cel_n              (:,:)   => null() ! (gN/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_froottn_to_litr_lig_n              (:,:)   => null() ! (gN/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootan_to_litr_met_n              (:,:)   => null() ! (gN/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootan_to_litr_cel_n              (:,:)   => null() ! (gN/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootan_to_litr_lig_n              (:,:)   => null() ! (gN/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootmn_to_litr_met_n              (:,:)   => null() ! (gN/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootmn_to_litr_cel_n              (:,:)   => null() ! (gN/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootmn_to_litr_lig_n              (:,:)   => null() ! (gN/m3/s) fine root to litter due to landcover change
+#else
+    real(r8), pointer :: dwt_frootn_to_litr_met_n              (:,:)   => null() ! (gN/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootn_to_litr_cel_n              (:,:)   => null() ! (gN/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootn_to_litr_lig_n              (:,:)   => null() ! (gN/m3/s) fine root to litter due to landcover change
+#endif  
     ! fire N fluxes
     real(r8), pointer :: m_decomp_npools_to_fire_vr            (:,:,:) => null() ! vertically-resolved decomposing N fire loss (gN/m3/s)
     real(r8), pointer :: m_decomp_npools_to_fire               (:,:)   => null() ! vertically-integrated (diagnostic) decomposing N fire loss (gN/m2/s)
@@ -813,9 +849,9 @@ module ColumnDataType
     real(r8), pointer :: dwt_prod10n_gain                      (:)     => null() ! (gN/m2/s) addition to 10-yr wood product pool
     real(r8), pointer :: dwt_prod100n_gain                     (:)     => null() ! (gN/m2/s) addition to 100-yr wood product pool
     real(r8), pointer :: dwt_crop_productn_gain                (:)     => null() ! (gN/m2/s) addition to crop product pool
-    real(r8), pointer :: dwt_frootn_to_litr_met_n              (:,:)   => null() ! (gN/m3/s) fine root to litter due to landcover change
-    real(r8), pointer :: dwt_frootn_to_litr_cel_n              (:,:)   => null() ! (gN/m3/s) fine root to litter due to landcover change
-    real(r8), pointer :: dwt_frootn_to_litr_lig_n              (:,:)   => null() ! (gN/m3/s) fine root to litter due to landcover change
+    !real(r8), pointer :: dwt_frootn_to_litr_met_n              (:,:)   => null() ! (gN/m3/s) fine root to litter due to landcover change
+    !real(r8), pointer :: dwt_frootn_to_litr_cel_n              (:,:)   => null() ! (gN/m3/s) fine root to litter due to landcover change
+    !real(r8), pointer :: dwt_frootn_to_litr_lig_n              (:,:)   => null() ! (gN/m3/s) fine root to litter due to landcover change
     real(r8), pointer :: dwt_livecrootn_to_cwdn                (:,:)   => null() ! (gN/m3/s) live coarse root to CWD due to landcover change
     real(r8), pointer :: dwt_deadcrootn_to_cwdn                (:,:)   => null() ! (gN/m3/s) dead coarse root to CWD due to landcover change
     real(r8), pointer :: dwt_nloss                             (:)     => null() ! (gN/m2/s) total nitrogen loss from product pools and conversion
@@ -936,6 +972,21 @@ module ColumnDataType
     real(r8), pointer :: decomp_cascade_ptransfer              (:,:)   => null() ! vert-int (diagnostic) transfer of P from donor to receiver pool along decomp. cascade (gP/m2/s)
     real(r8), pointer :: decomp_cascade_sminp_flux_vr          (:,:,:) => null() ! vert-res mineral P flux for transition along decomposition cascade (gP/m3/s)
     real(r8), pointer :: decomp_cascade_sminp_flux             (:,:)   => null() ! vert-int (diagnostic) mineral P flux for transition along decomposition cascade (gP/m2/s)
+#if defined(TAM)
+    real(r8), pointer :: dwt_froottp_to_litr_met_p              (:,:)   => null() ! (gP/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_froottp_to_litr_cel_p              (:,:)   => null() ! (gP/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_froottp_to_litr_lig_p              (:,:)   => null() ! (gP/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootap_to_litr_met_p              (:,:)   => null() ! (gP/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootap_to_litr_cel_p              (:,:)   => null() ! (gP/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootap_to_litr_lig_p              (:,:)   => null() ! (gP/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootmp_to_litr_met_p              (:,:)   => null() ! (gP/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootmp_to_litr_cel_p              (:,:)   => null() ! (gP/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootmp_to_litr_lig_p              (:,:)   => null() ! (gP/m3/s) fine root to litter due to landcover change
+#else
+    real(r8), pointer :: dwt_frootp_to_litr_met_p              (:,:)   => null() ! (gP/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootp_to_litr_cel_p              (:,:)   => null() ! (gP/m3/s) fine root to litter due to landcover change
+    real(r8), pointer :: dwt_frootp_to_litr_lig_p              (:,:)   => null() ! (gP/m3/s) fine root to litter due to landcover change
+#endif 
     real(r8), pointer :: potential_immob_p_vr                  (:,:)   => null() ! vertically-resolved potential P immobilization (gP/m3/s) at each level
     real(r8), pointer :: potential_immob_p                     (:)     => null() ! vert-int (diagnostic) potential P immobilization (gP/m2/s)
     real(r8), pointer :: actual_immob_p_vr                     (:,:)   => null() ! vertically-resolved actual P immobilization (gP/m3/s) at each level
@@ -994,9 +1045,9 @@ module ColumnDataType
     real(r8), pointer :: dwt_prod10p_gain                      (:)     => null() ! (gP/m2/s) addition to 10-yr wood product pool
     real(r8), pointer :: dwt_prod100p_gain                     (:)     => null() ! (gP/m2/s) addition to 100-yr wood product pool
     real(r8), pointer :: dwt_crop_productp_gain                (:)     => null() ! (gP/m2/s) addition to crop product pool
-    real(r8), pointer :: dwt_frootp_to_litr_met_p              (:,:)   => null() ! (gP/m3/s) fine root to litter due to landcover change
-    real(r8), pointer :: dwt_frootp_to_litr_cel_p              (:,:)   => null() ! (gP/m3/s) fine root to litter due to landcover change
-    real(r8), pointer :: dwt_frootp_to_litr_lig_p              (:,:)   => null() ! (gP/m3/s) fine root to litter due to landcover change
+    !real(r8), pointer :: dwt_frootp_to_litr_met_p              (:,:)   => null() ! (gP/m3/s) fine root to litter due to landcover change
+    !real(r8), pointer :: dwt_frootp_to_litr_cel_p              (:,:)   => null() ! (gP/m3/s) fine root to litter due to landcover change
+    !real(r8), pointer :: dwt_frootp_to_litr_lig_p              (:,:)   => null() ! (gP/m3/s) fine root to litter due to landcover change
     real(r8), pointer :: dwt_livecrootp_to_cwdp                (:,:)   => null() ! (gP/m3/s) live coarse root to CWD due to landcover change
     real(r8), pointer :: dwt_deadcrootp_to_cwdp                (:,:)   => null() ! (gP/m3/s) dead coarse root to CWD due to landcover change
     real(r8), pointer :: dwt_ploss                             (:)     => null() ! (gP/m2/s) total phosphorus loss from product pools and conversion
@@ -2053,13 +2104,20 @@ contains
     allocate(this%deadstemc            (begc:endc))     ; this%deadstemc            (:)     = spval
     allocate(this%fuelc                (begc:endc))     ; this%fuelc                (:)     = spval
     allocate(this%fuelc_crop           (begc:endc))     ; this%fuelc_crop           (:)     = spval
-    allocate(this%frootc               (begc:endc))     ; this%frootc               (:)     = spval
+    !allocate(this%frootc               (begc:endc))     ; this%frootc               (:)     = spval
     allocate(this%seedc                (begc:endc))     ; this%seedc                (:)     = spval
     allocate(this%prod1c               (begc:endc))     ; this%prod1c               (:)     = spval
     allocate(this%prod10c              (begc:endc))     ; this%prod10c              (:)     = spval
     allocate(this%prod100c             (begc:endc))     ; this%prod100c             (:)     = spval
     allocate(this%totprodc             (begc:endc))     ; this%totprodc             (:)     = spval
     allocate(this%dyn_cbal_adjustments (begc:endc))     ; this%dyn_cbal_adjustments (:)     = spval
+#if defined(TAM)
+    allocate(this%froottc              (begc:endc))     ; this%froottc              (:)     = spval
+    allocate(this%frootac              (begc:endc))     ; this%frootac              (:)     = spval
+    allocate(this%frootmc              (begc:endc))     ; this%frootmc              (:)     = spval
+#else
+    allocate(this%frootc               (begc:endc))     ; this%frootc               (:)     = spval
+#endif
     allocate(this%totpftc              (begc:endc))     ; this%totpftc              (:)     = spval
     allocate(this%cwdc                 (begc:endc))     ; this%cwdc                 (:)     = spval
     allocate(this%ctrunc               (begc:endc))     ; this%ctrunc               (:)     = spval
@@ -6039,6 +6097,21 @@ contains
     allocate(this%fire_mortality_c_to_cwdc          (begc:endc,1:nlevdecomp_full)); this%fire_mortality_c_to_cwdc     (:,:) = spval
     allocate(this%somc_fire                         (begc:endc))                  ; this%somc_fire                    (:)   = spval
     allocate(this%somc_erode                        (begc:endc))                  ; this%somc_erode                   (:)   = spval
+#if defined(TAM)
+    allocate(this%dwt_froottc_to_litr_met_c          (begc:endc,1:nlevdecomp_full)); this%dwt_froottc_to_litr_met_c     (:,:) = spval
+    allocate(this%dwt_froottc_to_litr_cel_c          (begc:endc,1:nlevdecomp_full)); this%dwt_froottc_to_litr_cel_c     (:,:) = spval
+    allocate(this%dwt_froottc_to_litr_lig_c          (begc:endc,1:nlevdecomp_full)); this%dwt_froottc_to_litr_lig_c     (:,:) = spval
+    allocate(this%dwt_frootac_to_litr_met_c          (begc:endc,1:nlevdecomp_full)); this%dwt_frootac_to_litr_met_c     (:,:) = spval
+    allocate(this%dwt_frootac_to_litr_cel_c          (begc:endc,1:nlevdecomp_full)); this%dwt_frootac_to_litr_cel_c     (:,:) = spval
+    allocate(this%dwt_frootac_to_litr_lig_c          (begc:endc,1:nlevdecomp_full)); this%dwt_frootac_to_litr_lig_c     (:,:) = spval
+    allocate(this%dwt_frootmc_to_litr_met_c          (begc:endc,1:nlevdecomp_full)); this%dwt_frootmc_to_litr_met_c     (:,:) = spval
+    allocate(this%dwt_frootmc_to_litr_cel_c          (begc:endc,1:nlevdecomp_full)); this%dwt_frootmc_to_litr_cel_c     (:,:) = spval
+    allocate(this%dwt_frootmc_to_litr_lig_c          (begc:endc,1:nlevdecomp_full)); this%dwt_frootmc_to_litr_lig_c     (:,:) = spval
+#else
+    allocate(this%dwt_frootc_to_litr_met_c          (begc:endc,1:nlevdecomp_full)); this%dwt_frootc_to_litr_met_c     (:,:) = spval
+    allocate(this%dwt_frootc_to_litr_cel_c          (begc:endc,1:nlevdecomp_full)); this%dwt_frootc_to_litr_cel_c     (:,:) = spval
+    allocate(this%dwt_frootc_to_litr_lig_c          (begc:endc,1:nlevdecomp_full)); this%dwt_frootc_to_litr_lig_c     (:,:) = spval
+#endif 
     allocate(this%somc_deposit                      (begc:endc))                  ; this%somc_deposit                 (:)   = spval
     allocate(this%somc_yield                        (begc:endc))                  ; this%somc_yield                   (:)   = spval
     allocate(this%harvest_c_to_litr_met_c           (begc:endc,1:nlevdecomp_full)); this%harvest_c_to_litr_met_c      (:,:) = spval
@@ -6048,9 +6121,9 @@ contains
     allocate(this%hrv_deadstemc_to_prod10c          (begc:endc))                  ; this%hrv_deadstemc_to_prod10c     (:)   = spval
     allocate(this%hrv_deadstemc_to_prod100c         (begc:endc))                  ; this%hrv_deadstemc_to_prod100c    (:)   = spval
     allocate(this%hrv_cropc_to_prod1c               (begc:endc))                  ; this%hrv_cropc_to_prod1c          (:)   = spval
-    allocate(this%dwt_frootc_to_litr_met_c          (begc:endc,1:nlevdecomp_full)); this%dwt_frootc_to_litr_met_c     (:,:) = spval
-    allocate(this%dwt_frootc_to_litr_cel_c          (begc:endc,1:nlevdecomp_full)); this%dwt_frootc_to_litr_cel_c     (:,:) = spval
-    allocate(this%dwt_frootc_to_litr_lig_c          (begc:endc,1:nlevdecomp_full)); this%dwt_frootc_to_litr_lig_c     (:,:) = spval
+    !allocate(this%dwt_frootc_to_litr_met_c          (begc:endc,1:nlevdecomp_full)); this%dwt_frootc_to_litr_met_c     (:,:) = spval
+    !allocate(this%dwt_frootc_to_litr_cel_c          (begc:endc,1:nlevdecomp_full)); this%dwt_frootc_to_litr_cel_c     (:,:) = spval
+    !allocate(this%dwt_frootc_to_litr_lig_c          (begc:endc,1:nlevdecomp_full)); this%dwt_frootc_to_litr_lig_c     (:,:) = spval
     allocate(this%dwt_livecrootc_to_cwdc            (begc:endc,1:nlevdecomp_full)); this%dwt_livecrootc_to_cwdc       (:,:) = spval
     allocate(this%dwt_deadcrootc_to_cwdc            (begc:endc,1:nlevdecomp_full)); this%dwt_deadcrootc_to_cwdc       (:,:) = spval
     allocate(this%dwt_slash_cflux                   (begc:endc))                  ; this%dwt_slash_cflux              (:)   = spval
@@ -6552,7 +6625,53 @@ contains
         call hist_addfld1d (fname='PROD1C_LOSS', units='gC/m^2/s', &
              avgflag='A', long_name='loss from 1-yr crop product pool', &
               ptr_col=this%prod1c_loss, default='inactive')
+#if defined(TAM)
+         this%dwt_froottc_to_litr_met_c(begc:endc,:) = spval
+        call hist_addfld_decomp (fname='DWT_FROOTTC_TO_LITR_MET_C', units='gC/m^2/s',  type2d='levdcmp', &
+             avgflag='A', long_name='fine root t to litter due to landcover change', &
+              ptr_col=this%dwt_froottc_to_litr_met_c, default='inactive')
 
+         this%dwt_frootac_to_litr_met_c(begc:endc,:) = spval
+        call hist_addfld_decomp (fname='DWT_FROOTAC_TO_LITR_MET_C', units='gC/m^2/s',  type2d='levdcmp', &
+             avgflag='A', long_name='fine root a to litter due to landcover change', &
+              ptr_col=this%dwt_frootac_to_litr_met_c, default='inactive')
+
+
+        this%dwt_frootmc_to_litr_met_c(begc:endc,:) = spval
+        call hist_addfld_decomp (fname='DWT_FROOTMC_TO_LITR_MET_C', units='gC/m^2/s',  type2d='levdcmp', &
+             avgflag='A', long_name='fine root m to litter due to landcover change', &
+              ptr_col=this%dwt_frootmc_to_litr_met_c, default='inactive')
+
+         this%dwt_froottc_to_litr_cel_c(begc:endc,:) = spval
+         call hist_addfld_decomp (fname='DWT_FROOTTC_TO_LITR_CEL_C', units='gC/m^2/s',  type2d='levdcmp', &
+               avgflag='A', long_name='fine root t to litter due to landcover change', &
+               ptr_col=this%dwt_froottc_to_litr_cel_c, default='inactive')
+
+         this%dwt_frootac_to_litr_cel_c(begc:endc,:) = spval
+        call hist_addfld_decomp (fname='DWT_FROOTAC_TO_LITR_CEL_C', units='gC/m^2/s',  type2d='levdcmp', &
+             avgflag='A', long_name='fine root a to litter due to landcover change', &
+              ptr_col=this%dwt_frootac_to_litr_cel_c, default='inactive')
+
+         this%dwt_frootmc_to_litr_cel_c(begc:endc,:) = spval
+         call hist_addfld_decomp (fname='DWT_FROOTMC_TO_LITR_CEL_C', units='gC/m^2/s',  type2d='levdcmp', &
+               avgflag='A', long_name='fine root m to litter due to landcover change', &
+               ptr_col=this%dwt_frootmc_to_litr_cel_c, default='inactive')
+
+         this%dwt_froottc_to_litr_lig_c(begc:endc,:) = spval
+        call hist_addfld_decomp (fname='DWT_FROOTTC_TO_LITR_LIG_C', units='gC/m^2/s',  type2d='levdcmp', &
+             avgflag='A', long_name='fine root t to litter due to landcover change', &
+              ptr_col=this%dwt_froottc_to_litr_lig_c, default='inactive')
+
+         this%dwt_frootac_to_litr_lig_c(begc:endc,:) = spval
+        call hist_addfld_decomp (fname='DWT_FROOTAC_TO_LITR_LIG_C', units='gC/m^2/s',  type2d='levdcmp', &
+             avgflag='A', long_name='fine root a to litter due to landcover change', &
+              ptr_col=this%dwt_frootac_to_litr_lig_c, default='inactive')
+
+         this%dwt_frootmc_to_litr_lig_c(begc:endc,:) = spval
+        call hist_addfld_decomp (fname='DWT_FROOTMC_TO_LITR_LIG_C', units='gC/m^2/s',  type2d='levdcmp', &
+             avgflag='A', long_name='fine root m to litter due to landcover change', &
+              ptr_col=this%dwt_frootmc_to_litr_lig_c, default='inactive')
+#else
        this%dwt_frootc_to_litr_met_c(begc:endc,:) = spval
         call hist_addfld_decomp (fname='DWT_FROOTC_TO_LITR_MET_C', units='gC/m^2/s',  type2d='levdcmp', &
              avgflag='A', long_name='fine root to litter due to landcover change', &
@@ -6567,6 +6686,21 @@ contains
         call hist_addfld_decomp (fname='DWT_FROOTC_TO_LITR_LIG_C', units='gC/m^2/s',  type2d='levdcmp', &
              avgflag='A', long_name='fine root to litter due to landcover change', &
               ptr_col=this%dwt_frootc_to_litr_lig_c, default='inactive')
+#endif
+       !this%dwt_frootc_to_litr_met_c(begc:endc,:) = spval
+       ! call hist_addfld_decomp (fname='DWT_FROOTC_TO_LITR_MET_C', units='gC/m^2/s',  type2d='levdcmp', &
+       !      avgflag='A', long_name='fine root to litter due to landcover change', &
+       !       ptr_col=this%dwt_frootc_to_litr_met_c, default='inactive')
+
+       !this%dwt_frootc_to_litr_cel_c(begc:endc,:) = spval
+       ! call hist_addfld_decomp (fname='DWT_FROOTC_TO_LITR_CEL_C', units='gC/m^2/s',  type2d='levdcmp', &
+       !      avgflag='A', long_name='fine root to litter due to landcover change', &
+       !       ptr_col=this%dwt_frootc_to_litr_cel_c, default='inactive')
+
+       !this%dwt_frootc_to_litr_lig_c(begc:endc,:) = spval
+       ! call hist_addfld_decomp (fname='DWT_FROOTC_TO_LITR_LIG_C', units='gC/m^2/s',  type2d='levdcmp', &
+       !      avgflag='A', long_name='fine root to litter due to landcover change', &
+       !       ptr_col=this%dwt_frootc_to_litr_lig_c, default='inactive')
 
        this%dwt_livecrootc_to_cwdc(begc:endc,:) = spval
         call hist_addfld_decomp (fname='DWT_LIVECROOTC_TO_CWDC', units='gC/m^2/s',  type2d='levdcmp', &
@@ -6783,7 +6917,9 @@ contains
         call hist_addfld1d (fname='C13_PROD1C_LOSS', units='gC13/m^2/s', &
              avgflag='A', long_name='C13 loss from 1-yr crop product pool', &
               ptr_col=this%prod1c_loss)
+#if defined(TAM)
 
+#else
        this%dwt_frootc_to_litr_met_c(begc:endc,:) = spval
         call hist_addfld_decomp (fname='C13_DWT_FROOTC_TO_LITR_MET_C', units='gC13/m^2/s',  type2d='levdcmp', &
              avgflag='A', long_name='C13 fine root to litter due to landcover change', &
@@ -6798,7 +6934,7 @@ contains
         call hist_addfld_decomp (fname='C13_DWT_FROOTC_TO_LITR_LIG_C', units='gC13/m^2/s',  type2d='levdcmp', &
              avgflag='A', long_name='C13 fine root to litter due to landcover change', &
               ptr_col=this%dwt_frootc_to_litr_lig_c, default='inactive')
-
+#endif
        this%dwt_livecrootc_to_cwdc(begc:endc,:) = spval
         call hist_addfld_decomp (fname='C13_DWT_LIVECROOTC_TO_CWDC', units='gC13/m^2/s',  type2d='levdcmp', &
              avgflag='A', long_name='C13 live coarse root to CWD due to landcover change', &
@@ -6979,7 +7115,9 @@ contains
         call hist_addfld1d (fname='C14_PROD1C_LOSS', units='gC14/m^2/s', &
              avgflag='A', long_name='C14 loss from 1-yr crop product pool', &
               ptr_col=this%prod1c_loss)
+#if defined(TAM)
 
+#else
        this%dwt_frootc_to_litr_met_c(begc:endc,:) = spval
         call hist_addfld_decomp (fname='C14_DWT_FROOTC_TO_LITR_MET_C', units='gC14/m^2/s',  type2d='levdcmp', &
              avgflag='A', long_name='C14 fine root to litter due to landcover change', &
@@ -6994,7 +7132,7 @@ contains
         call hist_addfld_decomp (fname='C14_DWT_FROOTC_TO_LITR_LIG_C', units='gC14/m^2/s',  type2d='levdcmp', &
              avgflag='A', long_name='C14 fine root to litter due to landcover change', &
               ptr_col=this%dwt_frootc_to_litr_lig_c, default='inactive')
-
+#endif
        this%dwt_livecrootc_to_cwdc(begc:endc,:) = spval
         call hist_addfld_decomp (fname='C14_DWT_LIVECROOTC_TO_CWDC', units='gC14/m^2/s',  type2d='levdcmp', &
              avgflag='A', long_name='C14 live coarse root to CWD due to landcover change', &
@@ -7070,9 +7208,21 @@ contains
           this%prod100c_loss(c)         = 0._r8
           this%dwt_slash_cflux(c)       = 0._r8
           do j = 1, nlevdecomp_full
+#if defined(TAM)
+             this%dwt_froottc_to_litr_met_c(c,j) = 0._r8
+             this%dwt_froottc_to_litr_cel_c(c,j) = 0._r8
+             this%dwt_froottc_to_litr_lig_c(c,j) = 0._r8
+             this%dwt_frootac_to_litr_met_c(c,j) = 0._r8
+             this%dwt_frootac_to_litr_cel_c(c,j) = 0._r8
+             this%dwt_frootac_to_litr_lig_c(c,j) = 0._r8
+             this%dwt_frootmc_to_litr_met_c(c,j) = 0._r8
+             this%dwt_frootmc_to_litr_cel_c(c,j) = 0._r8
+             this%dwt_frootmc_to_litr_lig_c(c,j) = 0._r8
+#else
              this%dwt_frootc_to_litr_met_c(c,j) = 0._r8
              this%dwt_frootc_to_litr_cel_c(c,j) = 0._r8
              this%dwt_frootc_to_litr_lig_c(c,j) = 0._r8
+#endif
              this%dwt_livecrootc_to_cwdc(c,j)   = 0._r8
              this%dwt_deadcrootc_to_cwdc(c,j)   = 0._r8
           end do
@@ -7934,9 +8084,21 @@ contains
 
     do j = 1, nlevdecomp_full
        do c = bounds%begc,bounds%endc
+#if defined(TAM)
+          this%dwt_froottc_to_litr_met_c(c,j)    = 0._r8
+          this%dwt_frootac_to_litr_met_c(c,j)    = 0._r8
+          this%dwt_frootmc_to_litr_met_c(c,j)    = 0._r8
+          this%dwt_froottc_to_litr_cel_c(c,j)    = 0._r8
+          this%dwt_frootac_to_litr_cel_c(c,j)    = 0._r8
+          this%dwt_frootmc_to_litr_cel_c(c,j)    = 0._r8
+          this%dwt_froottc_to_litr_lig_c(c,j)    = 0._r8
+          this%dwt_frootac_to_litr_lig_c(c,j)    = 0._r8
+          this%dwt_frootmc_to_litr_lig_c(c,j)    = 0._r8
+#else
           this%dwt_frootc_to_litr_met_c(c,j)    = 0._r8
           this%dwt_frootc_to_litr_cel_c(c,j)    = 0._r8
           this%dwt_frootc_to_litr_lig_c(c,j)    = 0._r8
+#endif
           this%dwt_livecrootc_to_cwdc(c,j)      = 0._r8
           this%dwt_deadcrootc_to_cwdc(c,j)      = 0._r8
        end do
@@ -8062,29 +8224,59 @@ contains
                 this%externalc_to_decomp_cpools(c,j,l) =                 &
                     this%externalc_to_decomp_cpools(c,j,l)               &
                         + this%phenology_c_to_litr_met_c(c,j)            &
-                        + this%dwt_frootc_to_litr_met_c(c,j)             &
+                        !+ this%dwt_frootc_to_litr_met_c(c,j)             &
                         + this%gap_mortality_c_to_litr_met_c(c,j)        &
                         + this%harvest_c_to_litr_met_c(c,j)              &
                         + this%m_c_to_litr_met_fire(c,j)
-
+#if defined(TAM)
+                this%externalc_to_decomp_cpools(c,j,l) =                 &
+                    this%externalc_to_decomp_cpools(c,j,l)               &
+                        + this%dwt_froottc_to_litr_met_c(c,j)            &
+                        + this%dwt_frootac_to_litr_met_c(c,j)            &
+                        + this%dwt_frootmc_to_litr_met_c(c,j)            
+#else
+                this%externalc_to_decomp_cpools(c,j,l) =                 &
+                  this%externalc_to_decomp_cpools(c,j,l)                 &
+                       + this%dwt_frootc_to_litr_met_c(c,j)              
+#endif
              elseif (l==i_cel_lit) then
                 this%externalc_to_decomp_cpools(c,j,l) =                 &
                     this%externalc_to_decomp_cpools(c,j,l)               &
                         + this%phenology_c_to_litr_cel_c(c,j)            &
-                        + this%dwt_frootc_to_litr_cel_c(c,j)             &
+                        !+ this%dwt_frootc_to_litr_cel_c(c,j)             &
                         + this%gap_mortality_c_to_litr_cel_c(c,j)        &
                         + this%harvest_c_to_litr_cel_c(c,j)              &
                         + this%m_c_to_litr_cel_fire(c,j)
-
+#if defined(TAM)
+                this%externalc_to_decomp_cpools(c,j,l) =                 &
+                    this%externalc_to_decomp_cpools(c,j,l)               &
+                        + this%dwt_froottc_to_litr_cel_c(c,j)            &
+                        + this%dwt_frootac_to_litr_cel_c(c,j)            &
+                        + this%dwt_frootmc_to_litr_cel_c(c,j)            
+#else
+                this%externalc_to_decomp_cpools(c,j,l) =                 &
+                     this%externalc_to_decomp_cpools(c,j,l)              &
+                        + this%dwt_frootc_to_litr_cel_c(c,j)
+#endif
              elseif (l==i_lig_lit) then
                 this%externalc_to_decomp_cpools(c,j,l) =                 &
                     this%externalc_to_decomp_cpools(c,j,l)               &
                         + this%phenology_c_to_litr_lig_c(c,j)            &
-                        + this%dwt_frootc_to_litr_lig_c(c,j)             &
+                        !+ this%dwt_frootc_to_litr_lig_c(c,j)             &
                         + this%gap_mortality_c_to_litr_lig_c(c,j)        &
                         + this%harvest_c_to_litr_lig_c(c,j)              &
                         + this%m_c_to_litr_lig_fire(c,j)
-
+#if defined(TAM)
+                this%externalc_to_decomp_cpools(c,j,l) =                 &
+                    this%externalc_to_decomp_cpools(c,j,l)               &
+                        + this%dwt_froottc_to_litr_lig_c(c,j)            &
+                        + this%dwt_frootac_to_litr_lig_c(c,j)            &
+                        + this%dwt_frootmc_to_litr_lig_c(c,j)
+#else
+                this%externalc_to_decomp_cpools(c,j,l) =                 &
+                    this%externalc_to_decomp_cpools(c,j,l)               &
+                        + this%dwt_frootc_to_litr_lig_c(c,j)
+#endif
              ! for cwd
              elseif (l==i_cwd) then
                 this%externalc_to_decomp_cpools(c,j,l) =                 &
@@ -8161,7 +8353,21 @@ contains
     allocate(this%ndep_to_sminn_no3               (begc:endc))                   ; this%ndep_to_sminn_no3                (:)   = spval
     allocate(this%nfix_to_sminn                   (begc:endc))                   ; this%nfix_to_sminn	                 (:)   = spval
     allocate(this%nfix_to_ecosysn                 (begc:endc))                   ; this%nfix_to_ecosysn                (:)   = spval
-
+#if defined(TAM)
+    allocate(this%dwt_froottn_to_litr_met_n        (begc:endc,1:nlevdecomp_full)) ; this%dwt_froottn_to_litr_met_n       (:,:) = spval
+    allocate(this%dwt_froottn_to_litr_cel_n        (begc:endc,1:nlevdecomp_full)) ; this%dwt_froottn_to_litr_cel_n       (:,:) = spval
+    allocate(this%dwt_froottn_to_litr_lig_n        (begc:endc,1:nlevdecomp_full)) ; this%dwt_froottn_to_litr_lig_n       (:,:) = spval
+    allocate(this%dwt_frootan_to_litr_met_n        (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootan_to_litr_met_n       (:,:) = spval
+    allocate(this%dwt_frootan_to_litr_cel_n        (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootan_to_litr_cel_n       (:,:) = spval
+    allocate(this%dwt_frootan_to_litr_lig_n        (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootan_to_litr_lig_n       (:,:) = spval
+    allocate(this%dwt_frootmn_to_litr_met_n        (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootmn_to_litr_met_n       (:,:) = spval
+    allocate(this%dwt_frootmn_to_litr_cel_n        (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootmn_to_litr_cel_n       (:,:) = spval
+    allocate(this%dwt_frootmn_to_litr_lig_n        (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootmn_to_litr_lig_n       (:,:) = spval
+#else
+    allocate(this%dwt_frootn_to_litr_met_n        (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootn_to_litr_met_n       (:,:) = spval
+    allocate(this%dwt_frootn_to_litr_cel_n        (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootn_to_litr_cel_n       (:,:) = spval
+    allocate(this%dwt_frootn_to_litr_lig_n        (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootn_to_litr_lig_n       (:,:) = spval
+#endif
     allocate(this%fert_to_sminn                   (begc:endc))                   ; this%fert_to_sminn	                 (:)   = spval
     allocate(this%soyfixn_to_sminn                (begc:endc))                   ; this%soyfixn_to_sminn               (:)   = spval
     allocate(this%hrv_deadstemn_to_prod10n        (begc:endc))                   ; this%hrv_deadstemn_to_prod10n       (:)   = spval
@@ -8206,9 +8412,9 @@ contains
     allocate(this%dwt_crop_productn_gain          (begc:endc))                   ; this%dwt_crop_productn_gain         (:)   = spval
     allocate(this%dwt_nloss                       (begc:endc))                   ; this%dwt_nloss                      (:)   = spval
     allocate(this%wood_harvestn                   (begc:endc))                   ; this%wood_harvestn                  (:)   = spval
-    allocate(this%dwt_frootn_to_litr_met_n        (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootn_to_litr_met_n       (:,:) = spval
-    allocate(this%dwt_frootn_to_litr_cel_n        (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootn_to_litr_cel_n       (:,:) = spval
-    allocate(this%dwt_frootn_to_litr_lig_n        (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootn_to_litr_lig_n       (:,:) = spval
+    !allocate(this%dwt_frootn_to_litr_met_n        (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootn_to_litr_met_n       (:,:) = spval
+    !allocate(this%dwt_frootn_to_litr_cel_n        (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootn_to_litr_cel_n       (:,:) = spval
+    !allocate(this%dwt_frootn_to_litr_lig_n        (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootn_to_litr_lig_n       (:,:) = spval
     allocate(this%dwt_livecrootn_to_cwdn          (begc:endc,1:nlevdecomp_full)) ; this%dwt_livecrootn_to_cwdn         (:,:) = spval
     allocate(this%dwt_deadcrootn_to_cwdn          (begc:endc,1:nlevdecomp_full)) ; this%dwt_deadcrootn_to_cwdn         (:,:) = spval
     allocate(this%f_nit_vr                        (begc:endc,1:nlevdecomp_full)) ; this%f_nit_vr                       (:,:) = spval
@@ -8924,21 +9130,78 @@ contains
      call hist_addfld1d (fname='PRODUCT_NLOSS', units='gN/m^2/s', &
           avgflag='A', long_name='total N loss from wood product pools', &
            ptr_col=this%product_nloss, default='inactive')
+#if defined(TAM)
+    this%dwt_froottn_to_litr_met_n(begc:endc,:) = spval
+           call hist_addfld_decomp (fname='DWT_FROOTTN_TO_LITR_MET_N', units='gN/m^2/s',  type2d='levdcmp', &
+                avgflag='A', long_name='fine root t to litter due to landcover change', &
+                 ptr_col=this%dwt_froottn_to_litr_met_n, default='inactive')
+    this%dwt_frootan_to_litr_met_n(begc:endc,:) = spval
+           call hist_addfld_decomp (fname='DWT_FROOTAN_TO_LITR_MET_N', units='gN/m^2/s',  type2d='levdcmp', &
+                avgflag='A', long_name='fine root a to litter due to landcover change', &
+                 ptr_col=this%dwt_frootan_to_litr_met_n, default='inactive')
+    this%dwt_frootmn_to_litr_met_n(begc:endc,:) = spval
+           call hist_addfld_decomp (fname='DWT_FROOTMN_TO_LITR_MET_N', units='gN/m^2/s',  type2d='levdcmp', &
+                avgflag='A', long_name='fine root m to litter due to landcover change', &
+                 ptr_col=this%dwt_frootmn_to_litr_met_n, default='inactive')
+      this%dwt_froottn_to_litr_cel_n(begc:endc,:) = spval
+      call hist_addfld_decomp (fname='DWT_FROOTTN_TO_LITR_CEL_N', units='gN/m^2/s',  type2d='levdcmp', &
+            avgflag='A', long_name='fine root t to litter due to landcover change', &
+            ptr_col=this%dwt_froottn_to_litr_cel_n, default='inactive')
 
-    this%dwt_frootn_to_litr_met_n(begc:endc,:) = spval
+      this%dwt_frootan_to_litr_cel_n(begc:endc,:) = spval
+      call hist_addfld_decomp (fname='DWT_FROOTAN_TO_LITR_CEL_N', units='gN/m^2/s',  type2d='levdcmp', &
+            avgflag='A', long_name='fine root a to litter due to landcover change', &
+            ptr_col=this%dwt_frootan_to_litr_cel_n, default='inactive')
+
+      this%dwt_frootmn_to_litr_cel_n(begc:endc,:) = spval
+      call hist_addfld_decomp (fname='DWT_FROOTMN_TO_LITR_CEL_N', units='gN/m^2/s',  type2d='levdcmp', &
+            avgflag='A', long_name='fine root m to litter due to landcover change', &
+            ptr_col=this%dwt_frootmn_to_litr_cel_n, default='inactive')
+
+      this%dwt_froottn_to_litr_lig_n(begc:endc,:) = spval
+      call hist_addfld_decomp (fname='DWT_FROOTTN_TO_LITR_LIG_N', units='gN/m^2/s',  type2d='levdcmp', &
+            avgflag='A', long_name='fine root t to litter due to landcover change', &
+            ptr_col=this%dwt_froottn_to_litr_lig_n, default='inactive')
+   
+      this%dwt_frootan_to_litr_lig_n(begc:endc,:) = spval
+      call hist_addfld_decomp (fname='DWT_FROOTAN_TO_LITR_LIG_N', units='gN/m^2/s',  type2d='levdcmp', &
+            avgflag='A', long_name='fine root a to litter due to landcover change', &
+            ptr_col=this%dwt_frootan_to_litr_lig_n, default='inactive')
+   
+      this%dwt_frootmn_to_litr_lig_n(begc:endc,:) = spval
+      call hist_addfld_decomp (fname='DWT_FROOTMN_TO_LITR_LIG_N', units='gN/m^2/s',  type2d='levdcmp', &
+            avgflag='A', long_name='fine root m to litter due to landcover change', &
+            ptr_col=this%dwt_frootmn_to_litr_lig_n, default='inactive')
+#else
+     this%dwt_frootn_to_litr_met_n(begc:endc,:) = spval
      call hist_addfld_decomp (fname='DWT_FROOTN_TO_LITR_MET_N', units='gN/m^2/s',  type2d='levdcmp', &
           avgflag='A', long_name='fine root to litter due to landcover change', &
            ptr_col=this%dwt_frootn_to_litr_met_n, default='inactive')
 
-    this%dwt_frootn_to_litr_cel_n(begc:endc,:) = spval
+     this%dwt_frootn_to_litr_cel_n(begc:endc,:) = spval
      call hist_addfld_decomp (fname='DWT_FROOTN_TO_LITR_CEL_N', units='gN/m^2/s',  type2d='levdcmp', &
           avgflag='A', long_name='fine root to litter due to landcover change', &
            ptr_col=this%dwt_frootn_to_litr_cel_n, default='inactive')
 
-    this%dwt_frootn_to_litr_lig_n(begc:endc,:) = spval
+     this%dwt_frootn_to_litr_lig_n(begc:endc,:) = spval
      call hist_addfld_decomp (fname='DWT_FROOTN_TO_LITR_LIG_N', units='gN/m^2/s',  type2d='levdcmp', &
           avgflag='A', long_name='fine root to litter due to landcover change', &
            ptr_col=this%dwt_frootn_to_litr_lig_n, default='inactive')
+#endif
+    !this%dwt_frootn_to_litr_met_n(begc:endc,:) = spval
+    ! call hist_addfld_decomp (fname='DWT_FROOTN_TO_LITR_MET_N', units='gN/m^2/s',  type2d='levdcmp', &
+    !      avgflag='A', long_name='fine root to litter due to landcover change', &
+    !       ptr_col=this%dwt_frootn_to_litr_met_n, default='inactive')
+
+    !this%dwt_frootn_to_litr_cel_n(begc:endc,:) = spval
+    ! call hist_addfld_decomp (fname='DWT_FROOTN_TO_LITR_CEL_N', units='gN/m^2/s',  type2d='levdcmp', &
+    !      avgflag='A', long_name='fine root to litter due to landcover change', &
+    !       ptr_col=this%dwt_frootn_to_litr_cel_n, default='inactive')
+
+    !this%dwt_frootn_to_litr_lig_n(begc:endc,:) = spval
+    ! call hist_addfld_decomp (fname='DWT_FROOTN_TO_LITR_LIG_N', units='gN/m^2/s',  type2d='levdcmp', &
+    !      avgflag='A', long_name='fine root to litter due to landcover change', &
+    !       ptr_col=this%dwt_frootn_to_litr_lig_n, default='inactive')
 
     this%dwt_livecrootn_to_cwdn(begc:endc,:) = spval
      call hist_addfld_decomp (fname='DWT_LIVECROOTN_TO_CWDN', units='gN/m^2/s',  type2d='levdcmp', &
@@ -9554,9 +9817,23 @@ contains
 
     do j = 1, nlevdecomp_full
        do c = bounds%begc,bounds%endc
+#if defined(TAM)
+          this%dwt_froottn_to_litr_met_n(c,j) = 0._r8
+          this%dwt_frootan_to_litr_met_n(c,j) = 0._r8
+          this%dwt_frootmn_to_litr_met_n(c,j) = 0._r8
+
+          this%dwt_froottn_to_litr_cel_n(c,j) = 0._r8
+          this%dwt_frootan_to_litr_cel_n(c,j) = 0._r8
+          this%dwt_frootmn_to_litr_cel_n(c,j) = 0._r8
+
+          this%dwt_froottn_to_litr_lig_n(c,j) = 0._r8
+          this%dwt_frootan_to_litr_lig_n(c,j) = 0._r8
+          this%dwt_frootmn_to_litr_lig_n(c,j) = 0._r8
+#else
           this%dwt_frootn_to_litr_met_n(c,j) = 0._r8
           this%dwt_frootn_to_litr_cel_n(c,j) = 0._r8
           this%dwt_frootn_to_litr_lig_n(c,j) = 0._r8
+#endif
           this%dwt_livecrootn_to_cwdn(c,j)   = 0._r8
           this%dwt_deadcrootn_to_cwdn(c,j)   = 0._r8
        end do
@@ -9977,29 +10254,59 @@ contains
                 this%externaln_to_decomp_npools(c,j,l) =              &
                     this%externaln_to_decomp_npools(c,j,l)            &
                      + this%phenology_n_to_litr_met_n(c,j)            &
-                     + this%dwt_frootn_to_litr_met_n(c,j)             &
+                     !+ this%dwt_frootn_to_litr_met_n(c,j)             &
                      + this%gap_mortality_n_to_litr_met_n(c,j)        &
                      + this%harvest_n_to_litr_met_n(c,j)              &
                      + this%m_n_to_litr_met_fire(c,j)
-
+#if defined(TAM)
+                this%externaln_to_decomp_npools(c,j,l) =              &
+                    this%externaln_to_decomp_npools(c,j,l)            &
+                    + this%dwt_froottn_to_litr_met_n(c,j)             &
+                    + this%dwt_frootan_to_litr_met_n(c,j)             &
+                    + this%dwt_frootmn_to_litr_met_n(c,j)             
+#else
+                this%externaln_to_decomp_npools(c,j,l) =              &
+                     this%externaln_to_decomp_npools(c,j,l)           &
+                     + this%dwt_frootn_to_litr_met_n(c,j)             
+#endif
              elseif (l==i_cel_lit) then
                 this%externaln_to_decomp_npools(c,j,l) =              &
                     this%externaln_to_decomp_npools(c,j,l)            &
                      + this%phenology_n_to_litr_cel_n(c,j)            &
-                     + this%dwt_frootn_to_litr_cel_n(c,j)             &
+                     !+ this%dwt_frootn_to_litr_cel_n(c,j)             &
                      + this%gap_mortality_n_to_litr_cel_n(c,j)        &
                      + this%harvest_n_to_litr_cel_n(c,j)              &
                      + this%m_n_to_litr_cel_fire(c,j)
-
+#if defined(TAM)
+                this%externaln_to_decomp_npools(c,j,l) =              &
+                    this%externaln_to_decomp_npools(c,j,l)            &
+                     + this%dwt_froottn_to_litr_cel_n(c,j)            &
+                     + this%dwt_frootan_to_litr_cel_n(c,j)            &
+                     + this%dwt_frootmn_to_litr_cel_n(c,j)
+#else
+                this%externaln_to_decomp_npools(c,j,l) =              &
+                     this%externaln_to_decomp_npools(c,j,l)           &
+                     + this%dwt_frootn_to_litr_cel_n(c,j)
+#endif
              elseif (l==i_lig_lit) then
                 this%externaln_to_decomp_npools(c,j,l) =              &
                     this%externaln_to_decomp_npools(c,j,l)            &
                      + this%phenology_n_to_litr_lig_n(c,j)            &
-                     + this%dwt_frootn_to_litr_lig_n(c,j)             &
+                     !+ this%dwt_frootn_to_litr_lig_n(c,j)             &
                      + this%gap_mortality_n_to_litr_lig_n(c,j)        &
                      + this%harvest_n_to_litr_lig_n(c,j)              &
                      + this%m_n_to_litr_lig_fire(c,j)
-
+#if defined(TAM)
+                this%externaln_to_decomp_npools(c,j,l) =              &
+                    this%externaln_to_decomp_npools(c,j,l)            &
+                    + this%dwt_froottn_to_litr_lig_n(c,j)             &
+                    + this%dwt_frootan_to_litr_lig_n(c,j)             &
+                    + this%dwt_frootmn_to_litr_lig_n(c,j)
+#else
+                this%externaln_to_decomp_npools(c,j,l) =              &
+                    this%externaln_to_decomp_npools(c,j,l)            &
+                     + this%dwt_frootn_to_litr_lig_n(c,j)
+#endif
              ! for cwd
              elseif (l==i_cwd) then
                 this%externaln_to_decomp_npools(c,j,l) =              &
@@ -10100,6 +10407,21 @@ contains
     allocate(this%actual_immob_p                   (begc:endc))                   ; this%actual_immob_p                (:)   = spval
     allocate(this%gross_pmin                       (begc:endc))                   ; this%gross_pmin                    (:)   = spval
     allocate(this%net_pmin                         (begc:endc))                   ; this%net_pmin                      (:)   = spval
+#if defined(TAM)
+    allocate(this%dwt_froottp_to_litr_met_p         (begc:endc,1:nlevdecomp_full)) ; this%dwt_froottp_to_litr_met_p      (:,:) = spval
+    allocate(this%dwt_froottp_to_litr_cel_p         (begc:endc,1:nlevdecomp_full)) ; this%dwt_froottp_to_litr_cel_p      (:,:) = spval
+    allocate(this%dwt_froottp_to_litr_lig_p         (begc:endc,1:nlevdecomp_full)) ; this%dwt_froottp_to_litr_lig_p      (:,:) = spval
+    allocate(this%dwt_frootap_to_litr_met_p         (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootap_to_litr_met_p      (:,:) = spval
+    allocate(this%dwt_frootap_to_litr_cel_p         (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootap_to_litr_cel_p      (:,:) = spval
+    allocate(this%dwt_frootap_to_litr_lig_p         (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootap_to_litr_lig_p      (:,:) = spval
+    allocate(this%dwt_frootmp_to_litr_met_p         (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootmp_to_litr_met_p      (:,:) = spval
+    allocate(this%dwt_frootmp_to_litr_cel_p         (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootmp_to_litr_cel_p      (:,:) = spval
+    allocate(this%dwt_frootmp_to_litr_lig_p         (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootmp_to_litr_lig_p      (:,:) = spval
+#else
+    allocate(this%dwt_frootp_to_litr_met_p         (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootp_to_litr_met_p      (:,:) = spval
+    allocate(this%dwt_frootp_to_litr_cel_p         (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootp_to_litr_cel_p      (:,:) = spval
+    allocate(this%dwt_frootp_to_litr_lig_p         (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootp_to_litr_lig_p      (:,:) = spval
+#endif 
     allocate(this%supplement_to_sminp              (begc:endc))                   ; this%supplement_to_sminp           (:)   = spval
     allocate(this%prod1p_loss                      (begc:endc))                   ; this%prod1p_loss                   (:)   = spval
     allocate(this%prod10p_loss                     (begc:endc))                   ; this%prod10p_loss                  (:)   = spval
@@ -10148,9 +10470,9 @@ contains
     allocate(this%dwt_crop_productp_gain           (begc:endc))                   ; this%dwt_crop_productp_gain        (:)   = spval
     allocate(this%dwt_ploss                        (begc:endc))                   ; this%dwt_ploss                     (:)   = spval
     allocate(this%wood_harvestp                    (begc:endc))                   ; this%wood_harvestp                 (:)   = spval
-    allocate(this%dwt_frootp_to_litr_met_p         (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootp_to_litr_met_p      (:,:) = spval
-    allocate(this%dwt_frootp_to_litr_cel_p         (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootp_to_litr_cel_p      (:,:) = spval
-    allocate(this%dwt_frootp_to_litr_lig_p         (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootp_to_litr_lig_p      (:,:) = spval
+    !allocate(this%dwt_frootp_to_litr_met_p         (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootp_to_litr_met_p      (:,:) = spval
+    !allocate(this%dwt_frootp_to_litr_cel_p         (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootp_to_litr_cel_p      (:,:) = spval
+    !allocate(this%dwt_frootp_to_litr_lig_p         (begc:endc,1:nlevdecomp_full)) ; this%dwt_frootp_to_litr_lig_p      (:,:) = spval
     allocate(this%dwt_livecrootp_to_cwdp           (begc:endc,1:nlevdecomp_full)) ; this%dwt_livecrootp_to_cwdp        (:,:) = spval
     allocate(this%dwt_deadcrootp_to_cwdp           (begc:endc,1:nlevdecomp_full)) ; this%dwt_deadcrootp_to_cwdp        (:,:) = spval
     allocate(this%decomp_cascade_ptransfer_vr      (begc:endc,1:nlevdecomp_full,1:ndecomp_cascade_transitions )) ; this%decomp_cascade_ptransfer_vr  (:,:,:) = spval
@@ -10711,7 +11033,52 @@ contains
      call hist_addfld1d (fname='PRODUCT_PLOSS', units='gP/m^2/s', &
           avgflag='A', long_name='total P loss from wood product pools', &
            ptr_col=this%product_ploss, default='inactive')
+#if defined(TAM)
+      this%dwt_froottp_to_litr_met_p(begc:endc,:) = spval
+     call hist_addfld_decomp (fname='DWT_FROOTTP_TO_LITR_MET_P', units='gP/m^2/s',  type2d='levdcmp', &
+          avgflag='A', long_name='fine root t to litter due to landcover change', &
+           ptr_col=this%dwt_froottp_to_litr_met_p, default='inactive')
 
+      this%dwt_frootap_to_litr_met_p(begc:endc,:) = spval
+     call hist_addfld_decomp (fname='DWT_FROOTAP_TO_LITR_MET_P', units='gP/m^2/s',  type2d='levdcmp', &
+          avgflag='A', long_name='fine root a to litter due to landcover change', &
+           ptr_col=this%dwt_frootap_to_litr_met_p, default='inactive')
+
+      this%dwt_frootmp_to_litr_met_p(begc:endc,:) = spval
+     call hist_addfld_decomp (fname='DWT_FROOTMP_TO_LITR_MET_P', units='gP/m^2/s',  type2d='levdcmp', &
+          avgflag='A', long_name='fine root m to litter due to landcover change', &
+           ptr_col=this%dwt_frootmp_to_litr_met_p, default='inactive')
+
+      this%dwt_froottp_to_litr_cel_p(begc:endc,:) = spval
+      call hist_addfld_decomp (fname='DWT_FROOTTP_TO_LITR_CEL_P', units='gP/m^2/s',  type2d='levdcmp', &
+            avgflag='A', long_name='fine root t to litter due to landcover change', &
+            ptr_col=this%dwt_froottp_to_litr_cel_p, default='inactive')
+
+      this%dwt_frootap_to_litr_cel_p(begc:endc,:) = spval
+     call hist_addfld_decomp (fname='DWT_FROOTAP_TO_LITR_CEL_P', units='gP/m^2/s',  type2d='levdcmp', &
+          avgflag='A', long_name='fine root a to litter due to landcover change', &
+           ptr_col=this%dwt_frootap_to_litr_cel_p, default='inactive')
+
+      this%dwt_frootmp_to_litr_cel_p(begc:endc,:) = spval
+     call hist_addfld_decomp (fname='DWT_FROOTMP_TO_LITR_CEL_P', units='gP/m^2/s',  type2d='levdcmp', &
+          avgflag='A', long_name='fine root m to litter due to landcover change', &
+           ptr_col=this%dwt_frootmp_to_litr_cel_p, default='inactive')
+
+      this%dwt_froottp_to_litr_lig_p(begc:endc,:) = spval
+     call hist_addfld_decomp (fname='DWT_FROOTTP_TO_LITR_LIG_P', units='gP/m^2/s',  type2d='levdcmp', &
+          avgflag='A', long_name='fine root t to litter due to landcover change', &
+           ptr_col=this%dwt_froottp_to_litr_lig_p, default='inactive')
+
+      this%dwt_frootap_to_litr_lig_p(begc:endc,:) = spval
+     call hist_addfld_decomp (fname='DWT_FROOTAP_TO_LITR_LIG_P', units='gP/m^2/s',  type2d='levdcmp', &
+          avgflag='A', long_name='fine root a to litter due to landcover change', &
+           ptr_col=this%dwt_frootap_to_litr_lig_p, default='inactive')
+
+      this%dwt_frootmp_to_litr_lig_p(begc:endc,:) = spval
+     call hist_addfld_decomp (fname='DWT_FROOTMP_TO_LITR_LIG_P', units='gP/m^2/s',  type2d='levdcmp', &
+          avgflag='A', long_name='fine root m to litter due to landcover change', &
+           ptr_col=this%dwt_frootmp_to_litr_lig_p, default='inactive')
+#else
     this%dwt_frootp_to_litr_met_p(begc:endc,:) = spval
      call hist_addfld_decomp (fname='DWT_FROOTP_TO_LITR_MET_P', units='gP/m^2/s',  type2d='levdcmp', &
           avgflag='A', long_name='fine root to litter due to landcover change', &
@@ -10726,6 +11093,21 @@ contains
      call hist_addfld_decomp (fname='DWT_FROOTP_TO_LITR_LIG_P', units='gP/m^2/s',  type2d='levdcmp', &
           avgflag='A', long_name='fine root to litter due to landcover change', &
            ptr_col=this%dwt_frootp_to_litr_lig_p, default='inactive')
+#endif
+    !this%dwt_frootp_to_litr_met_p(begc:endc,:) = spval
+    ! call hist_addfld_decomp (fname='DWT_FROOTP_TO_LITR_MET_P', units='gP/m^2/s',  type2d='levdcmp', &
+    !      avgflag='A', long_name='fine root to litter due to landcover change', &
+    !       ptr_col=this%dwt_frootp_to_litr_met_p, default='inactive')
+
+    !this%dwt_frootp_to_litr_cel_p(begc:endc,:) = spval
+    ! call hist_addfld_decomp (fname='DWT_FROOTP_TO_LITR_CEL_P', units='gP/m^2/s',  type2d='levdcmp', &
+    !      avgflag='A', long_name='fine root to litter due to landcover change', &
+    !       ptr_col=this%dwt_frootp_to_litr_cel_p, default='inactive')
+
+    !this%dwt_frootp_to_litr_lig_p(begc:endc,:) = spval
+    ! call hist_addfld_decomp (fname='DWT_FROOTP_TO_LITR_LIG_P', units='gP/m^2/s',  type2d='levdcmp', &
+    !      avgflag='A', long_name='fine root to litter due to landcover change', &
+    !       ptr_col=this%dwt_frootp_to_litr_lig_p, default='inactive')
 
     this%dwt_livecrootp_to_cwdp(begc:endc,:) = spval
      call hist_addfld_decomp (fname='DWT_LIVECROOTP_TO_CWDP', units='gP/m^2/s',  type2d='levdcmp', &
@@ -11076,9 +11458,24 @@ contains
 
     do j = 1, nlevdecomp_full
        do c = bounds%begc,bounds%endc
+#if defined(TAM)
+          this%dwt_froottp_to_litr_met_p(c,j) = 0._r8
+          this%dwt_frootap_to_litr_met_p(c,j) = 0._r8
+          this%dwt_frootmp_to_litr_met_p(c,j) = 0._r8
+
+          this%dwt_froottp_to_litr_cel_p(c,j) = 0._r8
+          this%dwt_frootap_to_litr_cel_p(c,j) = 0._r8
+          this%dwt_frootmp_to_litr_cel_p(c,j) = 0._r8
+
+          this%dwt_froottp_to_litr_lig_p(c,j) = 0._r8
+          this%dwt_frootap_to_litr_lig_p(c,j) = 0._r8
+          this%dwt_frootmp_to_litr_lig_p(c,j) = 0._r8
+
+#else
           this%dwt_frootp_to_litr_met_p(c,j) = 0._r8
           this%dwt_frootp_to_litr_cel_p(c,j) = 0._r8
           this%dwt_frootp_to_litr_lig_p(c,j) = 0._r8
+#endif
           this%dwt_livecrootp_to_cwdp(c,j)   = 0._r8
           this%dwt_deadcrootp_to_cwdp(c,j)   = 0._r8
        end do
@@ -11472,26 +11869,56 @@ contains
                 this%externalp_to_decomp_ppools(c,j,l) =              &
                     this%externalp_to_decomp_ppools(c,j,l)            &
                      + this%phenology_p_to_litr_met_p(c,j)            &
-                     + this%dwt_frootp_to_litr_met_p(c,j)             &
+                     !+ this%dwt_frootp_to_litr_met_p(c,j)             &
                      + this%gap_mortality_p_to_litr_met_p(c,j)        &
                      + this%harvest_p_to_litr_met_p(c,j)
-
+#if defined(TAM)
+                this%externalp_to_decomp_ppools(c,j,l) =              &
+                    this%externalp_to_decomp_ppools(c,j,l)            &
+                    + this%dwt_froottp_to_litr_met_p(c,j)             &
+                    + this%dwt_frootap_to_litr_met_p(c,j)             &
+                    + this%dwt_frootmp_to_litr_met_p(c,j)             
+#else
+                this%externalp_to_decomp_ppools(c,j,l) =              &
+                     this%externalp_to_decomp_ppools(c,j,l)           &
+                     + this%dwt_frootp_to_litr_met_p(c,j)             
+#endif
              elseif (l==i_cel_lit) then
                 this%externalp_to_decomp_ppools(c,j,l) =              &
                     this%externalp_to_decomp_ppools(c,j,l)            &
                      + this%phenology_p_to_litr_cel_p(c,j)            &
-                     + this%dwt_frootp_to_litr_cel_p(c,j)             &
+                     !+ this%dwt_frootp_to_litr_cel_p(c,j)             &
                      + this%gap_mortality_p_to_litr_cel_p(c,j)        &
                      + this%harvest_p_to_litr_cel_p(c,j)
-
+#if defined(TAM)
+                this%externalp_to_decomp_ppools(c,j,l) =              &
+                    this%externalp_to_decomp_ppools(c,j,l)            &
+                     + this%dwt_froottp_to_litr_cel_p(c,j)            &
+                     + this%dwt_frootap_to_litr_cel_p(c,j)            &
+                     + this%dwt_frootmp_to_litr_cel_p(c,j)
+#else
+                this%externalp_to_decomp_ppools(c,j,l) =              &
+                    this%externalp_to_decomp_ppools(c,j,l)            &
+                     + this%dwt_frootp_to_litr_cel_p(c,j)
+#endif
              elseif (l==i_lig_lit) then
                 this%externalp_to_decomp_ppools(c,j,l) =              &
                     this%externalp_to_decomp_ppools(c,j,l)            &
                      + this%phenology_p_to_litr_lig_p(c,j)            &
-                     + this%dwt_frootp_to_litr_lig_p(c,j)             &
+                     !+ this%dwt_frootp_to_litr_lig_p(c,j)             &
                      + this%gap_mortality_p_to_litr_lig_p(c,j)        &
                      + this%harvest_p_to_litr_lig_p(c,j)
-
+#if defined(TAM)
+                this%externalp_to_decomp_ppools(c,j,l) =              &
+                    this%externalp_to_decomp_ppools(c,j,l)            &
+                     + this%dwt_froottp_to_litr_lig_p(c,j)            &
+                     + this%dwt_frootap_to_litr_lig_p(c,j)            &
+                     + this%dwt_frootmp_to_litr_lig_p(c,j)
+#else
+                this%externalp_to_decomp_ppools(c,j,l) =              &
+                    this%externalp_to_decomp_ppools(c,j,l)            &
+                     + this%dwt_frootp_to_litr_lig_p(c,j)
+#endif
              ! for cwd
              elseif (l==i_cwd) then
                 this%externalp_to_decomp_ppools(c,j,l) =              &

@@ -618,7 +618,9 @@ contains
          )
   ! set time steps
   dt = real( get_step_size(), r8 )
+#if defined(TAM)
 
+#else
   do fp = 1,num_soilp
     p = filter_soilp(fp)
     !assemble state variables
@@ -816,6 +818,7 @@ contains
       endif
     endif
   enddo
+#endif
   end associate
   end subroutine carbon_flux_limiter
 !---------------------------------------------------------------------------
@@ -853,6 +856,9 @@ contains
   )
   ! set time steps
   dt = real( get_step_size(), r8 )
+#if defined(TAM)
+
+#else
   do fp = 1,num_soilp
     p = filter_soilp(fp)
     ystates(:) = 0._r8
@@ -999,6 +1005,7 @@ contains
     rfluxes(f_supplement_to_plantn)          = veg_nf%supplement_to_plantn(p)
 
   enddo
+#endif
   end associate
   end subroutine nitrogen_flux_limiter
 
@@ -1038,6 +1045,9 @@ contains
 
   ! set time steps
   dt = real( get_step_size(), r8 )
+#if defined(TAM)
+
+#else
   do fp = 1,num_soilp
     p = filter_soilp(fp)
     ystates(:) = 0._r8
@@ -1183,6 +1193,7 @@ contains
     call fpmax(rfluxes(f_supplement_to_plantn)          , veg_pf%supplement_to_plantp(p))
 
   enddo
+#endif
   end associate
   end subroutine phosphorus_flux_limiter
 

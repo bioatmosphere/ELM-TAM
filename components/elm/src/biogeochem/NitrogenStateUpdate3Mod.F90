@@ -118,19 +118,30 @@ contains
 
             !from fire displayed pools
             veg_ns%leafn(p)              =  veg_ns%leafn(p)      - veg_nf%m_leafn_to_fire(p)      * dt
-            veg_ns%frootn(p)             =  veg_ns%frootn(p)     - veg_nf%m_frootn_to_fire(p)     * dt
+            !veg_ns%frootn(p)             =  veg_ns%frootn(p)     - veg_nf%m_frootn_to_fire(p)     * dt
             veg_ns%livestemn(p)          =  veg_ns%livestemn(p)  - veg_nf%m_livestemn_to_fire(p)  * dt
             veg_ns%deadstemn(p)          =  veg_ns%deadstemn(p)  - veg_nf%m_deadstemn_to_fire(p)  * dt
             veg_ns%livecrootn(p)         =  veg_ns%livecrootn(p) - veg_nf%m_livecrootn_to_fire(p) * dt
             veg_ns%deadcrootn(p)         =  veg_ns%deadcrootn(p) - veg_nf%m_deadcrootn_to_fire(p) * dt
 
             veg_ns%leafn(p)              =  veg_ns%leafn(p)      - veg_nf%m_leafn_to_litter_fire(p)           * dt
-            veg_ns%frootn(p)             =  veg_ns%frootn(p)     - veg_nf%m_frootn_to_litter_fire(p)          * dt
+            !veg_ns%frootn(p)             =  veg_ns%frootn(p)     - veg_nf%m_frootn_to_litter_fire(p)          * dt
             veg_ns%livestemn(p)          =  veg_ns%livestemn(p)  - veg_nf%m_livestemn_to_litter_fire(p)       * dt
             veg_ns%deadstemn(p)          =  veg_ns%deadstemn(p)  - veg_nf%m_deadstemn_to_litter_fire(p)       * dt
             veg_ns%livecrootn(p)         =  veg_ns%livecrootn(p) - veg_nf%m_livecrootn_to_litter_fire(p)      * dt
             veg_ns%deadcrootn(p)         =  veg_ns%deadcrootn(p) - veg_nf%m_deadcrootn_to_litter_fire(p)      * dt
-
+#if defined(TAM)
+            veg_ns%froottn(p)             =  veg_ns%froottn(p)     - veg_nf%m_froottn_to_fire(p)     * dt
+            veg_ns%frootan(p)             =  veg_ns%frootan(p)     - veg_nf%m_frootan_to_fire(p)     * dt
+            veg_ns%frootmn(p)             =  veg_ns%frootmn(p)     - veg_nf%m_frootmn_to_fire(p)     * dt
+        
+            veg_ns%froottn(p)             =  veg_ns%froottn(p)     - veg_nf%m_froottn_to_litter_fire(p)  * dt
+            veg_ns%frootan(p)             =  veg_ns%frootan(p)     - veg_nf%m_frootan_to_litter_fire(p)  * dt
+            veg_ns%frootmn(p)             =  veg_ns%frootmn(p)     - veg_nf%m_frootmn_to_litter_fire(p)  * dt
+#else
+            veg_ns%frootn(p)             =  veg_ns%frootn(p)     - veg_nf%m_frootn_to_fire(p)     * dt
+            veg_ns%frootn(p)             =  veg_ns%frootn(p)     - veg_nf%m_frootn_to_litter_fire(p)  * dt
+#endif
             ! storage pools
             veg_ns%leafn_storage(p)      =  veg_ns%leafn_storage(p)      - veg_nf%m_leafn_storage_to_fire(p)      * dt
             veg_ns%frootn_storage(p)     =  veg_ns%frootn_storage(p)     - veg_nf%m_frootn_storage_to_fire(p)     * dt

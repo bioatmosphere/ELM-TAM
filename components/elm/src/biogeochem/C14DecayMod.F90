@@ -78,7 +78,11 @@ contains
          deadstemc          =>    c14_veg_cs%deadstemc          , & ! Output:  [real(r8) (:)     ]  (gC/m2) dead stem C
          deadstemc_storage  =>    c14_veg_cs%deadstemc_storage  , & ! Output:  [real(r8) (:)     ]  (gC/m2) dead stem C storage
          deadstemc_xfer     =>    c14_veg_cs%deadstemc_xfer     , & ! Output:  [real(r8) (:)     ]  (gC/m2) dead stem C transfer
+#if defined(TAM)
+
+#else
          frootc             =>    c14_veg_cs%frootc             , & ! Output:  [real(r8) (:)     ]  (gC/m2) fine root C
+#endif
          frootc_storage     =>    c14_veg_cs%frootc_storage     , & ! Output:  [real(r8) (:)     ]  (gC/m2) fine root C storage
          frootc_xfer        =>    c14_veg_cs%frootc_xfer        , & ! Output:  [real(r8) (:)     ]  (gC/m2) fine root C transfer
          gresp_storage      =>    c14_veg_cs%gresp_storage      , & ! Output:  [real(r8) (:)     ]  (gC/m2) growth respiration storage
@@ -145,7 +149,11 @@ contains
          deadstemc(p)          = deadstemc(p)           * (1._r8 - decay_const * dt)
          deadstemc_storage(p)  = deadstemc_storage(p)   * (1._r8 - decay_const * dt)
          deadstemc_xfer(p)     = deadstemc_xfer(p)      * (1._r8 - decay_const * dt)
+#if defined(TAM)
+
+#else
          frootc(p)             = frootc(p)              * (1._r8 - decay_const * dt)
+#endif
          frootc_storage(p)     = frootc_storage(p)      * (1._r8 - decay_const * dt)
          frootc_xfer(p)        = frootc_xfer(p)         * (1._r8 - decay_const * dt)
          gresp_storage(p)      = gresp_storage(p)       * (1._r8 - decay_const * dt)

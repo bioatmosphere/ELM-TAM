@@ -229,8 +229,37 @@ contains
    pgridcell                           =>    veg_pp%gridcell                                , & ! Input:  [integer (:)]  pft-level index into gridcell-level quantities     
    ivt                                 =>    veg_pp%itype                                   , & ! Input:  [integer (:)]  pft vegetation type                                
 
-   leafc                               =>    veg_cs%leafc                                   , & ! Input:  [real(r8) (:)]  (gC/m2) leaf C                                    
-   frootc                              =>    veg_cs%frootc                                  , & ! Input:  [real(r8) (:)]  (gC/m2) fine root C                               
+   leafc                               =>    veg_cs%leafc                                   , & ! Input:  [real(r8) (:)]  (gC/m2) leaf C
+#if defined(TAM)     
+   froottc                              =>    veg_cs%froottc                                  , & ! Input:  [real(r8) (:)]  (gC/m2) fine root C
+   froottn                              =>    veg_ns%froottn                                  , & ! Input:  [real(r8) (:)]  (gN/m2) fine root N                               
+   froottp                              =>    veg_ps%froottp                                  , & ! Input:  [real(r8) (:)]  (gP/m2) fine root P                               
+   hrv_froottc_to_litter                =>    veg_cf%hrv_froottc_to_litter                    , & ! Output: [real(r8) (:)]                                                    
+   hrv_froottn_to_litter                =>    veg_nf%hrv_froottn_to_litter                    , & ! Output: [real(r8) (:)]                                                    
+   hrv_froottp_to_litter                =>    veg_pf%hrv_froottp_to_litter                    , & ! Output: [real(r8) (:)]
+
+   frootac                              =>    veg_cs%frootac                                  , & ! Input:  [real(r8) (:)]  (gC/m2) fine root C
+   frootan                              =>    veg_ns%frootan                                  , & ! Input:  [real(r8) (:)]  (gN/m2) fine root N                               
+   frootap                              =>    veg_ps%frootap                                  , & ! Input:  [real(r8) (:)]  (gP/m2) fine root P                               
+   hrv_frootac_to_litter                =>    veg_cf%hrv_frootac_to_litter                    , & ! Output: [real(r8) (:)]                                                    
+   hrv_frootan_to_litter                =>    veg_nf%hrv_frootan_to_litter                    , & ! Output: [real(r8) (:)]                                                    
+   hrv_frootap_to_litter                =>    veg_pf%hrv_frootap_to_litter                    , & ! Output: [real(r8) (:)]
+
+   frootmc                              =>    veg_cs%frootmc                                  , & ! Input:  [real(r8) (:)]  (gC/m2) fine root C
+   frootmn                              =>    veg_ns%frootmn                                  , & ! Input:  [real(r8) (:)]  (gN/m2) fine root N                               
+   frootmp                              =>    veg_ps%frootmp                                  , & ! Input:  [real(r8) (:)]  (gP/m2) fine root P                               
+   hrv_frootmc_to_litter                =>    veg_cf%hrv_frootmc_to_litter                    , & ! Output: [real(r8) (:)]                                                    
+   hrv_frootmn_to_litter                =>    veg_nf%hrv_frootmn_to_litter                    , & ! Output: [real(r8) (:)]                                                    
+   hrv_frootmp_to_litter                =>    veg_pf%hrv_frootmp_to_litter                    , & ! Output: [real(r8) (:)]
+#else
+   frootc                              =>    veg_cs%frootc                                  , & ! Input:  [real(r8) (:)]  (gC/m2) fine root C
+   frootn                              =>    veg_ns%frootn                                  , & ! Input:  [real(r8) (:)]  (gN/m2) fine root N                               
+   frootp                              =>    veg_ps%frootp                                  , & ! Input:  [real(r8) (:)]  (gP/m2) fine root P                               
+   hrv_frootc_to_litter                =>    veg_cf%hrv_frootc_to_litter                    , & ! Output: [real(r8) (:)]                                                    
+   hrv_frootn_to_litter                =>    veg_nf%hrv_frootn_to_litter                    , & ! Output: [real(r8) (:)]                                                    
+   hrv_frootp_to_litter                =>    veg_pf%hrv_frootp_to_litter                    , & ! Output: [real(r8) (:)]
+#endif 
+   !frootc                              =>    veg_cs%frootc                                  , & ! Input:  [real(r8) (:)]  (gC/m2) fine root C                               
    livestemc                           =>    veg_cs%livestemc                               , & ! Input:  [real(r8) (:)]  (gC/m2) live stem C                               
    deadstemc                           =>    veg_cs%deadstemc                               , & ! Input:  [real(r8) (:)]  (gC/m2) dead stem C                               
    livecrootc                          =>    veg_cs%livecrootc                              , & ! Input:  [real(r8) (:)]  (gC/m2) live coarse root C                        
@@ -253,7 +282,7 @@ contains
    cpool                               =>    veg_cs%cpool                                   , & ! Input:  [real(r8) (:)]  (gC/m2) Plant C storage
 
    leafn                               =>    veg_ns%leafn                                   , & ! Input:  [real(r8) (:)]  (gN/m2) leaf N                                    
-   frootn                              =>    veg_ns%frootn                                  , & ! Input:  [real(r8) (:)]  (gN/m2) fine root N                               
+   !frootn                              =>    veg_ns%frootn                                  , & ! Input:  [real(r8) (:)]  (gN/m2) fine root N                               
    livestemn                           =>    veg_ns%livestemn                               , & ! Input:  [real(r8) (:)]  (gN/m2) live stem N                               
    deadstemn                           =>    veg_ns%deadstemn                               , & ! Input:  [real(r8) (:)]  (gN/m2) dead stem N                               
    livecrootn                          =>    veg_ns%livecrootn                              , & ! Input:  [real(r8) (:)]  (gN/m2) live coarse root N                        
@@ -275,7 +304,7 @@ contains
    
    ! add phosphorus
    leafp                               =>    veg_ps%leafp                                   , & ! Input:  [real(r8) (:)]  (gP/m2) leaf P                                    
-   frootp                              =>    veg_ps%frootp                                  , & ! Input:  [real(r8) (:)]  (gP/m2) fine root P                               
+   !frootp                              =>    veg_ps%frootp                                  , & ! Input:  [real(r8) (:)]  (gP/m2) fine root P                               
    livestemp                           =>    veg_ps%livestemp                               , & ! Input:  [real(r8) (:)]  (gP/m2) live stem P                               
    deadstemp                           =>    veg_ps%deadstemp                               , & ! Input:  [real(r8) (:)]  (gP/m2) dead stem P                               
    livecrootp                          =>    veg_ps%livecrootp                              , & ! Input:  [real(r8) (:)]  (gP/m2) live coarse root P                        
@@ -296,7 +325,7 @@ contains
    deadcrootp_xfer                     =>    veg_ps%deadcrootp_xfer                         , & ! Input:  [real(r8) (:)]  (gP/m2) dead coarse root P transfer               
 
    hrv_leafc_to_litter                 =>    veg_cf%hrv_leafc_to_litter                     , & ! Output: [real(r8) (:)]                                                    
-   hrv_frootc_to_litter                =>    veg_cf%hrv_frootc_to_litter                    , & ! Output: [real(r8) (:)]                                                    
+   !hrv_frootc_to_litter                =>    veg_cf%hrv_frootc_to_litter                    , & ! Output: [real(r8) (:)]                                                    
    hrv_livestemc_to_litter             =>    veg_cf%hrv_livestemc_to_litter                 , & ! Output: [real(r8) (:)]                                                    
    hrv_deadstemc_to_prod10c            =>    veg_cf%hrv_deadstemc_to_prod10c                , & ! Output: [real(r8) (:)]                                                    
    hrv_deadstemc_to_prod100c           =>    veg_cf%hrv_deadstemc_to_prod100c               , & ! Output: [real(r8) (:)]                                                    
@@ -320,7 +349,7 @@ contains
    hrv_cpool_to_litter                 =>    veg_cf%hrv_cpool_to_litter                     , & ! Output: [real(r8) (:)]             
 
    hrv_leafn_to_litter                 =>    veg_nf%hrv_leafn_to_litter                     , & ! Output: [real(r8) (:)]                                                    
-   hrv_frootn_to_litter                =>    veg_nf%hrv_frootn_to_litter                    , & ! Output: [real(r8) (:)]                                                    
+   !hrv_frootn_to_litter                =>    veg_nf%hrv_frootn_to_litter                    , & ! Output: [real(r8) (:)]                                                    
    hrv_livestemn_to_litter             =>    veg_nf%hrv_livestemn_to_litter                 , & ! Output: [real(r8) (:)]                                                    
    hrv_deadstemn_to_prod10n            =>    veg_nf%hrv_deadstemn_to_prod10n                , & ! Output: [real(r8) (:)]                                                    
    hrv_deadstemn_to_prod100n           =>    veg_nf%hrv_deadstemn_to_prod100n               , & ! Output: [real(r8) (:)]                                                    
@@ -342,7 +371,7 @@ contains
    hrv_deadcrootn_xfer_to_litter       =>    veg_nf%hrv_deadcrootn_xfer_to_litter           , & ! Output: [real(r8) (:)]                                                    
 
    hrv_leafp_to_litter                 =>    veg_pf%hrv_leafp_to_litter                     , & ! Output: [real(r8) (:)]                                                    
-   hrv_frootp_to_litter                =>    veg_pf%hrv_frootp_to_litter                    , & ! Output: [real(r8) (:)]                                                    
+   !hrv_frootp_to_litter                =>    veg_pf%hrv_frootp_to_litter                    , & ! Output: [real(r8) (:)]                                                    
    hrv_livestemp_to_litter             =>    veg_pf%hrv_livestemp_to_litter                 , & ! Output: [real(r8) (:)]                                                    
    hrv_deadstemp_to_prod10p            =>    veg_pf%hrv_deadstemp_to_prod10p                , & ! Output: [real(r8) (:)]                                                    
    hrv_deadstemp_to_prod100p           =>    veg_pf%hrv_deadstemp_to_prod100p               , & ! Output: [real(r8) (:)]                                                    
@@ -393,7 +422,7 @@ contains
          ! pft-level harvest carbon fluxes
          ! displayed pools
          hrv_leafc_to_litter(p)               = leafc(p)               * m
-         hrv_frootc_to_litter(p)              = frootc(p)              * m
+         !hrv_frootc_to_litter(p)              = frootc(p)              * m
          hrv_livestemc_to_litter(p)           = livestemc(p)           * m
          hrv_deadstemc_to_prod10c(p)          = deadstemc(p)           * m * &
                                                 pprodharv10(ivt(p))
@@ -425,7 +454,7 @@ contains
          ! pft-level harvest mortality nitrogen fluxes
          ! displayed pools
          hrv_leafn_to_litter(p)               = leafn(p)               * m
-         hrv_frootn_to_litter(p)              = frootn(p)              * m
+         !hrv_frootn_to_litter(p)              = frootn(p)              * m
          hrv_livestemn_to_litter(p)           = livestemn(p)           * m
          hrv_deadstemn_to_prod10n(p)          = deadstemn(p)           * m * &
                                                 pprodharv10(ivt(p))
@@ -455,7 +484,7 @@ contains
          ! pft-level harvest mortality phosphorus fluxes
          ! displayed pools
          hrv_leafp_to_litter(p)               = leafp(p)               * m
-         hrv_frootp_to_litter(p)              = frootp(p)              * m
+         !hrv_frootp_to_litter(p)              = frootp(p)              * m
          hrv_livestemp_to_litter(p)           = livestemp(p)           * m
          hrv_deadstemp_to_prod10p(p)          = deadstemp(p)           * m * &
                                                 pprodharv10(ivt(p))
@@ -481,7 +510,23 @@ contains
          hrv_deadstemp_xfer_to_litter(p)      = deadstemp_xfer(p)      * m
          hrv_livecrootp_xfer_to_litter(p)     = livecrootp_xfer(p)     * m
          hrv_deadcrootp_xfer_to_litter(p)     = deadcrootp_xfer(p)     * m
+#if defined(TAM)
+          hrv_froottc_to_litter(p)              = froottc(p)              * m
+          hrv_froottn_to_litter(p)              = froottn(p)              * m
+          hrv_froottp_to_litter(p)              = froottp(p)              * m
 
+          hrv_frootac_to_litter(p)              = frootac(p)              * m
+          hrv_frootan_to_litter(p)              = frootan(p)              * m
+          hrv_frootap_to_litter(p)              = frootap(p)              * m
+
+          hrv_frootmc_to_litter(p)              = frootmc(p)              * m
+          hrv_frootmn_to_litter(p)              = frootmn(p)              * m
+          hrv_frootmp_to_litter(p)              = frootmp(p)              * m
+#else
+          hrv_frootc_to_litter(p)              = frootc(p)              * m
+          hrv_frootn_to_litter(p)              = frootn(p)              * m
+          hrv_frootp_to_litter(p)              = frootp(p)              * m
+#endif
       end if  ! end tree block
 
    end do ! end of pft loop
@@ -522,17 +567,49 @@ contains
         lf_flab                          =>    veg_vp%lf_flab                                       , & ! Input:  [real(r8) (:)   ]  leaf litter labile fraction                       
         lf_fcel                          =>    veg_vp%lf_fcel                                       , & ! Input:  [real(r8) (:)   ]  leaf litter cellulose fraction                    
         lf_flig                          =>    veg_vp%lf_flig                                       , & ! Input:  [real(r8) (:)   ]  leaf litter lignin fraction                       
+        !fr_flab                          =>    veg_vp%fr_flab                                       , & ! Input:  [real(r8) (:)   ]  fine root litter labile fraction                  
+        !fr_fcel                          =>    veg_vp%fr_fcel                                       , & ! Input:  [real(r8) (:)   ]  fine root litter cellulose fraction               
+        !fr_flig                          =>    veg_vp%fr_flig                                       , & ! Input:  [real(r8) (:)   ]  fine root litter lignin fraction                  
+        
+        leaf_prof                        =>    cnstate_vars%leaf_prof_patch                             , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of leaves                         
+        !froot_prof                       =>    cnstate_vars%froot_prof_patch                            , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of fine roots                     
+        croot_prof                       =>    cnstate_vars%croot_prof_patch                            , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of coarse roots                   
+        stem_prof                        =>    cnstate_vars%stem_prof_patch                             , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of stems                          
+#if defined(TAM)
+        frt_flab                          =>    veg_vp%frt_flab                                       , & ! Input:  [real(r8) (:)   ]  fine root litter labile fraction                  
+        frt_fcel                          =>    veg_vp%frt_fcel                                       , & ! Input:  [real(r8) (:)   ]  fine root litter cellulose fraction               
+        frt_flig                          =>    veg_vp%frt_flig                                       , & ! Input:  [real(r8) (:)   ]  fine root litter lignin fraction                          
+        froott_prof                       =>    cnstate_vars%froott_prof_patch                            , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of fine roots                     
+        hrv_froottc_to_litter             =>    veg_cf%hrv_froottc_to_litter               , & ! Input:  [real(r8) (:)   ]                                                    
+        hrv_froottn_to_litter             =>    veg_nf%hrv_froottn_to_litter             , & ! Input:  [real(r8) (:)   ]                                                    
+        hrv_froottp_to_litter             =>    veg_pf%hrv_froottp_to_litter             , & ! Input:  [real(r8) (:)   ]  
+
+        fra_flab                          =>    veg_vp%fra_flab                                       , & ! Input:  [real(r8) (:)   ]  fine root litter labile fraction                  
+        fra_fcel                          =>    veg_vp%fra_fcel                                       , & ! Input:  [real(r8) (:)   ]  fine root litter cellulose fraction               
+        fra_flig                          =>    veg_vp%fra_flig                                       , & ! Input:  [real(r8) (:)   ]  fine root litter lignin fraction                  
+        froota_prof                       =>    cnstate_vars%froota_prof_patch                            , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of fine roots                     
+        hrv_frootac_to_litter             =>    veg_cf%hrv_frootac_to_litter               , & ! Input:  [real(r8) (:)   ]                                                    
+        hrv_frootan_to_litter             =>    veg_nf%hrv_frootan_to_litter             , & ! Input:  [real(r8) (:)   ]                                                    
+        hrv_frootap_to_litter             =>    veg_pf%hrv_frootap_to_litter             , & ! Input:  [real(r8) (:)   ]  
+
+        frm_flab                          =>    veg_vp%frm_flab                                       , & ! Input:  [real(r8) (:)   ]  fine root litter labile fraction                  
+        frm_fcel                          =>    veg_vp%frm_fcel                                       , & ! Input:  [real(r8) (:)   ]  fine root litter cellulose fraction               
+        frm_flig                          =>    veg_vp%frm_flig                                       , & ! Input:  [real(r8) (:)   ]  fine root litter lignin fraction                  
+        frootm_prof                       =>    cnstate_vars%frootm_prof_patch                            , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of fine roots                     
+        hrv_frootmc_to_litter             =>    veg_cf%hrv_frootmc_to_litter               , & ! Input:  [real(r8) (:)   ]                                                    
+        hrv_frootmn_to_litter             =>    veg_nf%hrv_frootmn_to_litter             , & ! Input:  [real(r8) (:)   ]                                                    
+        hrv_frootmp_to_litter             =>    veg_pf%hrv_frootmp_to_litter             , & ! Input:  [real(r8) (:)   ]  
+#else
         fr_flab                          =>    veg_vp%fr_flab                                       , & ! Input:  [real(r8) (:)   ]  fine root litter labile fraction                  
         fr_fcel                          =>    veg_vp%fr_fcel                                       , & ! Input:  [real(r8) (:)   ]  fine root litter cellulose fraction               
         fr_flig                          =>    veg_vp%fr_flig                                       , & ! Input:  [real(r8) (:)   ]  fine root litter lignin fraction                  
-        
-        leaf_prof                        =>    cnstate_vars%leaf_prof_patch                             , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of leaves                         
         froot_prof                       =>    cnstate_vars%froot_prof_patch                            , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of fine roots                     
-        croot_prof                       =>    cnstate_vars%croot_prof_patch                            , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of coarse roots                   
-        stem_prof                        =>    cnstate_vars%stem_prof_patch                             , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of stems                          
-        
-        hrv_leafc_to_litter              =>    veg_cf%hrv_leafc_to_litter                , & ! Input:  [real(r8) (:)   ]                                                    
         hrv_frootc_to_litter             =>    veg_cf%hrv_frootc_to_litter               , & ! Input:  [real(r8) (:)   ]                                                    
+        hrv_frootn_to_litter             =>    veg_nf%hrv_frootn_to_litter             , & ! Input:  [real(r8) (:)   ]                                                    
+        hrv_frootp_to_litter             =>    veg_pf%hrv_frootp_to_litter             , & ! Input:  [real(r8) (:)   ]                                                    
+#endif        
+        hrv_leafc_to_litter              =>    veg_cf%hrv_leafc_to_litter                , & ! Input:  [real(r8) (:)   ]                                                    
+        !hrv_frootc_to_litter             =>    veg_cf%hrv_frootc_to_litter               , & ! Input:  [real(r8) (:)   ]                                                    
         hrv_livestemc_to_litter          =>    veg_cf%hrv_livestemc_to_litter            , & ! Input:  [real(r8) (:)   ]                                                    
         phrv_deadstemc_to_prod10c        =>    veg_cf%hrv_deadstemc_to_prod10c           , & ! Input:  [real(r8) (:)   ]                                                    
         phrv_deadstemc_to_prod100c       =>    veg_cf%hrv_deadstemc_to_prod100c          , & ! Input:  [real(r8) (:)   ]                                                    
@@ -561,7 +638,7 @@ contains
         harvest_c_to_cwdc                =>    col_cf%harvest_c_to_cwdc                    , & ! InOut:  [real(r8) (:,:) ]  C fluxes associated with harvest to CWD pool (gC/m3/s)
         
         hrv_leafn_to_litter              =>    veg_nf%hrv_leafn_to_litter              , & ! Input:  [real(r8) (:)   ]                                                    
-        hrv_frootn_to_litter             =>    veg_nf%hrv_frootn_to_litter             , & ! Input:  [real(r8) (:)   ]                                                    
+        !hrv_frootn_to_litter             =>    veg_nf%hrv_frootn_to_litter             , & ! Input:  [real(r8) (:)   ]                                                    
         hrv_livestemn_to_litter          =>    veg_nf%hrv_livestemn_to_litter          , & ! Input:  [real(r8) (:)   ]                                                    
         phrv_deadstemn_to_prod10n        =>    veg_nf%hrv_deadstemn_to_prod10n         , & ! Input:  [real(r8) (:)   ]                                                    
         phrv_deadstemn_to_prod100n       =>    veg_nf%hrv_deadstemn_to_prod100n        , & ! Input:  [real(r8) (:)   ]                                                    
@@ -590,7 +667,7 @@ contains
         
         ! add P harvest fluxes 
         hrv_leafp_to_litter              =>    veg_pf%hrv_leafp_to_litter              , & ! Input:  [real(r8) (:)   ]                                                    
-        hrv_frootp_to_litter             =>    veg_pf%hrv_frootp_to_litter             , & ! Input:  [real(r8) (:)   ]                                                    
+        !hrv_frootp_to_litter             =>    veg_pf%hrv_frootp_to_litter             , & ! Input:  [real(r8) (:)   ]                                                    
         hrv_livestemp_to_litter          =>    veg_pf%hrv_livestemp_to_litter          , & ! Input:  [real(r8) (:)   ]                                                    
         phrv_deadstemp_to_prod10p        =>    veg_pf%hrv_deadstemp_to_prod10p         , & ! Input:  [real(r8) (:)   ]                                                    
         phrv_deadstemp_to_prod100p       =>    veg_pf%hrv_deadstemp_to_prod100p        , & ! Input:  [real(r8) (:)   ]                                                    
@@ -638,12 +715,35 @@ contains
                          hrv_leafc_to_litter(p) * lf_flig(ivt(p)) * wtcol(p) * leaf_prof(p,j)
 
                     ! fine root harvest mortality carbon fluxes
+#if defined(TAM)
+                    harvest_c_to_litr_met_c(c,j) = harvest_c_to_litr_met_c(c,j) + &
+                         hrv_froottc_to_litter(p) * frt_flab(ivt(p)) * wtcol(p) * froott_prof(p,j) + &
+                         hrv_frootac_to_litter(p) * fra_flab(ivt(p)) * wtcol(p) * froota_prof(p,j) + &
+                         hrv_frootmc_to_litter(p) * frm_flab(ivt(p)) * wtcol(p) * frootm_prof(p,j)
+
+                    harvest_c_to_litr_cel_c(c,j) = harvest_c_to_litr_cel_c(c,j) + &
+                         hrv_froottc_to_litter(p) * frt_fcel(ivt(p)) * wtcol(p) * froott_prof(p,j) + &
+                         hrv_frootac_to_litter(p) * fra_fcel(ivt(p)) * wtcol(p) * froota_prof(p,j) + &
+                         hrv_frootmc_to_litter(p) * frm_fcel(ivt(p)) * wtcol(p) * frootm_prof(p,j)
+
+                    harvest_c_to_litr_lig_c(c,j) = harvest_c_to_litr_lig_c(c,j) + &
+                         hrv_froottc_to_litter(p) * frt_flig(ivt(p)) * wtcol(p) * froott_prof(p,j) + &
+                         hrv_frootac_to_litter(p) * fra_flig(ivt(p)) * wtcol(p) * froota_prof(p,j) + &
+                         hrv_frootmc_to_litter(p) * frm_flig(ivt(p)) * wtcol(p) * frootm_prof(p,j)
+#else
                     harvest_c_to_litr_met_c(c,j) = harvest_c_to_litr_met_c(c,j) + &
                          hrv_frootc_to_litter(p) * fr_flab(ivt(p)) * wtcol(p) * froot_prof(p,j)
                     harvest_c_to_litr_cel_c(c,j) = harvest_c_to_litr_cel_c(c,j) + &
                          hrv_frootc_to_litter(p) * fr_fcel(ivt(p)) * wtcol(p) * froot_prof(p,j)
                     harvest_c_to_litr_lig_c(c,j) = harvest_c_to_litr_lig_c(c,j) + &
                          hrv_frootc_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * froot_prof(p,j)
+#endif
+                    !harvest_c_to_litr_met_c(c,j) = harvest_c_to_litr_met_c(c,j) + &
+                    !     hrv_frootc_to_litter(p) * fr_flab(ivt(p)) * wtcol(p) * froot_prof(p,j)
+                    !harvest_c_to_litr_cel_c(c,j) = harvest_c_to_litr_cel_c(c,j) + &
+                    !     hrv_frootc_to_litter(p) * fr_fcel(ivt(p)) * wtcol(p) * froot_prof(p,j)
+                    !harvest_c_to_litr_lig_c(c,j) = harvest_c_to_litr_lig_c(c,j) + &
+                    !     hrv_frootc_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * froot_prof(p,j)
 
                     ! wood harvest mortality carbon fluxes
                     harvest_c_to_cwdc(c,j)  = harvest_c_to_cwdc(c,j)  + &
@@ -656,8 +756,20 @@ contains
                     ! storage harvest mortality carbon fluxes
                     harvest_c_to_litr_met_c(c,j)      = harvest_c_to_litr_met_c(c,j)      + &
                          hrv_leafc_storage_to_litter(p)      * wtcol(p) * leaf_prof(p,j)
+#if defined(TAM)
+                    harvest_c_to_litr_met_c(c,j)     = harvest_c_to_litr_met_c(c,j)     + &
+                         hrv_frootc_storage_to_litter(p)     * wtcol(p) * froott_prof(p,j)
+
+                    harvest_c_to_litr_met_c(c,j)     = harvest_c_to_litr_met_c(c,j)     + &
+                         hrv_frootc_xfer_to_litter(p)     * wtcol(p) * froott_prof(p,j)
+#else
                     harvest_c_to_litr_met_c(c,j)     = harvest_c_to_litr_met_c(c,j)     + &
                          hrv_frootc_storage_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+                    harvest_c_to_litr_met_c(c,j)     = harvest_c_to_litr_met_c(c,j)     + &
+                         hrv_frootc_xfer_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+#endif
+                    !harvest_c_to_litr_met_c(c,j)     = harvest_c_to_litr_met_c(c,j)     + &
+                    !     hrv_frootc_storage_to_litter(p)     * wtcol(p) * froot_prof(p,j)
                     harvest_c_to_litr_met_c(c,j)  = harvest_c_to_litr_met_c(c,j)  + &
                          hrv_livestemc_storage_to_litter(p)  * wtcol(p) * stem_prof(p,j)
                     harvest_c_to_litr_met_c(c,j)  = harvest_c_to_litr_met_c(c,j)  + &
@@ -675,8 +787,8 @@ contains
                     ! transfer harvest mortality carbon fluxes
                     harvest_c_to_litr_met_c(c,j)      = harvest_c_to_litr_met_c(c,j)      + &
                          hrv_leafc_xfer_to_litter(p)      * wtcol(p) * leaf_prof(p,j)
-                    harvest_c_to_litr_met_c(c,j)     = harvest_c_to_litr_met_c(c,j)     + &
-                         hrv_frootc_xfer_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+                    !harvest_c_to_litr_met_c(c,j)     = harvest_c_to_litr_met_c(c,j)     + &
+                    !     hrv_frootc_xfer_to_litter(p)     * wtcol(p) * froot_prof(p,j)
                     harvest_c_to_litr_met_c(c,j)  = harvest_c_to_litr_met_c(c,j)  + &
                          hrv_livestemc_xfer_to_litter(p)  * wtcol(p) * stem_prof(p,j)
                     harvest_c_to_litr_met_c(c,j)  = harvest_c_to_litr_met_c(c,j)  + &
@@ -697,12 +809,35 @@ contains
                          hrv_leafn_to_litter(p) * lf_flig(ivt(p)) * wtcol(p) * leaf_prof(p,j)
 
                     ! fine root litter nitrogen fluxes
+#if defined(TAM)
+                    harvest_n_to_litr_met_n(c,j) = harvest_n_to_litr_met_n(c,j) + &
+                         hrv_froottn_to_litter(p) * frt_flab(ivt(p)) * wtcol(p) * froott_prof(p,j) + &
+                         hrv_frootan_to_litter(p) * fra_flab(ivt(p)) * wtcol(p) * froota_prof(p,j) + &
+                         hrv_frootmn_to_litter(p) * frm_flab(ivt(p)) * wtcol(p) * frootm_prof(p,j)
+
+                    harvest_n_to_litr_cel_n(c,j) = harvest_n_to_litr_cel_n(c,j) + &
+                         hrv_froottn_to_litter(p) * frt_fcel(ivt(p)) * wtcol(p) * froott_prof(p,j) + &
+                         hrv_frootan_to_litter(p) * fra_fcel(ivt(p)) * wtcol(p) * froota_prof(p,j) + &
+                         hrv_frootmn_to_litter(p) * frm_fcel(ivt(p)) * wtcol(p) * frootm_prof(p,j)
+
+                    harvest_n_to_litr_lig_n(c,j) = harvest_n_to_litr_lig_n(c,j) + &
+                         hrv_froottn_to_litter(p) * frt_flig(ivt(p)) * wtcol(p) * froott_prof(p,j) + &
+                         hrv_frootan_to_litter(p) * fra_flig(ivt(p)) * wtcol(p) * froota_prof(p,j) + &
+                         hrv_frootmn_to_litter(p) * frm_flig(ivt(p)) * wtcol(p) * frootm_prof(p,j)
+#else
                     harvest_n_to_litr_met_n(c,j) = harvest_n_to_litr_met_n(c,j) + &
                          hrv_frootn_to_litter(p) * fr_flab(ivt(p)) * wtcol(p) * froot_prof(p,j)
                     harvest_n_to_litr_cel_n(c,j) = harvest_n_to_litr_cel_n(c,j) + &
                          hrv_frootn_to_litter(p) * fr_fcel(ivt(p)) * wtcol(p) * froot_prof(p,j)
                     harvest_n_to_litr_lig_n(c,j) = harvest_n_to_litr_lig_n(c,j) + &
                          hrv_frootn_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * froot_prof(p,j)
+#endif
+                    !harvest_n_to_litr_met_n(c,j) = harvest_n_to_litr_met_n(c,j) + &
+                    !     hrv_frootn_to_litter(p) * fr_flab(ivt(p)) * wtcol(p) * froot_prof(p,j)
+                    !harvest_n_to_litr_cel_n(c,j) = harvest_n_to_litr_cel_n(c,j) + &
+                    !     hrv_frootn_to_litter(p) * fr_fcel(ivt(p)) * wtcol(p) * froot_prof(p,j)
+                    !harvest_n_to_litr_lig_n(c,j) = harvest_n_to_litr_lig_n(c,j) + &
+                    !     hrv_frootn_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * froot_prof(p,j)
 
                     ! wood harvest mortality nitrogen fluxes
                     harvest_n_to_cwdn(c,j)  = harvest_n_to_cwdn(c,j)  + &
@@ -721,8 +856,21 @@ contains
                     ! storage harvest mortality nitrogen fluxes
                     harvest_n_to_litr_met_n(c,j)      = harvest_n_to_litr_met_n(c,j)      + &
                          hrv_leafn_storage_to_litter(p)      * wtcol(p) * leaf_prof(p,j)
+#if defined(TAM)
+                    harvest_n_to_litr_met_n(c,j)     = harvest_n_to_litr_met_n(c,j)     + &
+                         hrv_frootn_storage_to_litter(p)     * wtcol(p) * froott_prof(p,j)
+
+                    harvest_n_to_litr_met_n(c,j)     = harvest_n_to_litr_met_n(c,j)     + &
+                         hrv_frootn_xfer_to_litter(p)     * wtcol(p) * froott_prof(p,j)
+#else
                     harvest_n_to_litr_met_n(c,j)     = harvest_n_to_litr_met_n(c,j)     + &
                          hrv_frootn_storage_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+
+                    harvest_n_to_litr_met_n(c,j)     = harvest_n_to_litr_met_n(c,j)     + &
+                         hrv_frootn_xfer_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+#endif
+                    !harvest_n_to_litr_met_n(c,j)     = harvest_n_to_litr_met_n(c,j)     + &
+                    !     hrv_frootn_storage_to_litter(p)     * wtcol(p) * froot_prof(p,j)
                     harvest_n_to_litr_met_n(c,j)  = harvest_n_to_litr_met_n(c,j)  + &
                          hrv_livestemn_storage_to_litter(p)  * wtcol(p) * stem_prof(p,j)
                     harvest_n_to_litr_met_n(c,j)  = harvest_n_to_litr_met_n(c,j)  + &
@@ -735,8 +883,8 @@ contains
                     ! transfer harvest mortality nitrogen fluxes
                     harvest_n_to_litr_met_n(c,j)      = harvest_n_to_litr_met_n(c,j)      + &
                          hrv_leafn_xfer_to_litter(p)      * wtcol(p) * leaf_prof(p,j)
-                    harvest_n_to_litr_met_n(c,j)     = harvest_n_to_litr_met_n(c,j)     + &
-                         hrv_frootn_xfer_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+                    !harvest_n_to_litr_met_n(c,j)     = harvest_n_to_litr_met_n(c,j)     + &
+                    !     hrv_frootn_xfer_to_litter(p)     * wtcol(p) * froot_prof(p,j)
                     harvest_n_to_litr_met_n(c,j)  = harvest_n_to_litr_met_n(c,j)  + &
                          hrv_livestemn_xfer_to_litter(p)  * wtcol(p) * stem_prof(p,j)
                     harvest_n_to_litr_met_n(c,j)  = harvest_n_to_litr_met_n(c,j)  + &
@@ -756,12 +904,35 @@ contains
                          hrv_leafp_to_litter(p) * lf_flig(ivt(p)) * wtcol(p) * leaf_prof(p,j)
 
                     ! fine root litter phosphorus fluxes
+#if defined(TAM)
+                    harvest_p_to_litr_met_p(c,j) = harvest_p_to_litr_met_p(c,j) + &
+                         hrv_froottp_to_litter(p) * frt_flab(ivt(p)) * wtcol(p) * froott_prof(p,j) + &
+                         hrv_frootap_to_litter(p) * fra_flab(ivt(p)) * wtcol(p) * froota_prof(p,j) + &
+                         hrv_frootmp_to_litter(p) * frm_flab(ivt(p)) * wtcol(p) * frootm_prof(p,j)
+
+                    harvest_p_to_litr_cel_p(c,j) = harvest_p_to_litr_cel_p(c,j) + &
+                         hrv_froottp_to_litter(p) * frt_fcel(ivt(p)) * wtcol(p) * froott_prof(p,j) + &
+                         hrv_frootap_to_litter(p) * fra_fcel(ivt(p)) * wtcol(p) * froota_prof(p,j) + &
+                         hrv_frootmp_to_litter(p) * frm_fcel(ivt(p)) * wtcol(p) * frootm_prof(p,j)
+
+                    harvest_p_to_litr_lig_p(c,j) = harvest_p_to_litr_lig_p(c,j) + &
+                         hrv_froottp_to_litter(p) * frt_flig(ivt(p)) * wtcol(p) * froott_prof(p,j) + &
+                         hrv_frootap_to_litter(p) * fra_flig(ivt(p)) * wtcol(p) * froota_prof(p,j) + &
+                         hrv_frootmp_to_litter(p) * frm_flig(ivt(p)) * wtcol(p) * frootm_prof(p,j)
+#else
                     harvest_p_to_litr_met_p(c,j) = harvest_p_to_litr_met_p(c,j) + &
                          hrv_frootp_to_litter(p) * fr_flab(ivt(p)) * wtcol(p) * froot_prof(p,j)
                     harvest_p_to_litr_cel_p(c,j) = harvest_p_to_litr_cel_p(c,j) + &
                          hrv_frootp_to_litter(p) * fr_fcel(ivt(p)) * wtcol(p) * froot_prof(p,j)
                     harvest_p_to_litr_lig_p(c,j) = harvest_p_to_litr_lig_p(c,j) + &
                          hrv_frootp_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * froot_prof(p,j)
+#endif
+                    !harvest_p_to_litr_met_p(c,j) = harvest_p_to_litr_met_p(c,j) + &
+                    !     hrv_frootp_to_litter(p) * fr_flab(ivt(p)) * wtcol(p) * froot_prof(p,j)
+                    !harvest_p_to_litr_cel_p(c,j) = harvest_p_to_litr_cel_p(c,j) + &
+                    !     hrv_frootp_to_litter(p) * fr_fcel(ivt(p)) * wtcol(p) * froot_prof(p,j)
+                    !harvest_p_to_litr_lig_p(c,j) = harvest_p_to_litr_lig_p(c,j) + &
+                    !     hrv_frootp_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * froot_prof(p,j)
 
                     ! wood harvest mortality phosphorus fluxes
                     harvest_p_to_cwdp(c,j)  = harvest_p_to_cwdp(c,j)  + &
@@ -780,8 +951,19 @@ contains
                     ! storage harvest mortality phosphorus fluxes
                     harvest_p_to_litr_met_p(c,j)      = harvest_p_to_litr_met_p(c,j)      + &
                          hrv_leafp_storage_to_litter(p)      * wtcol(p) * leaf_prof(p,j)
+#if defined(TAM)
+                    harvest_p_to_litr_met_p(c,j)     = harvest_p_to_litr_met_p(c,j)     + &
+                         hrv_frootp_storage_to_litter(p)     * wtcol(p) * froott_prof(p,j)
+                    harvest_p_to_litr_met_p(c,j)     = harvest_p_to_litr_met_p(c,j)     + &
+                         hrv_frootp_xfer_to_litter(p)     * wtcol(p) * froott_prof(p,j)
+#else
                     harvest_p_to_litr_met_p(c,j)     = harvest_p_to_litr_met_p(c,j)     + &
                          hrv_frootp_storage_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+                    harvest_p_to_litr_met_p(c,j)     = harvest_p_to_litr_met_p(c,j)     + &
+                         hrv_frootp_xfer_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+#endif
+                    !harvest_p_to_litr_met_p(c,j)     = harvest_p_to_litr_met_p(c,j)     + &
+                    !     hrv_frootp_storage_to_litter(p)     * wtcol(p) * froot_prof(p,j)
                     harvest_p_to_litr_met_p(c,j)  = harvest_p_to_litr_met_p(c,j)  + &
                          hrv_livestemp_storage_to_litter(p)  * wtcol(p) * stem_prof(p,j)
                     harvest_p_to_litr_met_p(c,j)  = harvest_p_to_litr_met_p(c,j)  + &
@@ -794,8 +976,8 @@ contains
                     ! transfer harvest mortality phosphorus fluxes
                     harvest_p_to_litr_met_p(c,j)      = harvest_p_to_litr_met_p(c,j)      + &
                          hrv_leafp_xfer_to_litter(p)      * wtcol(p) * leaf_prof(p,j)
-                    harvest_p_to_litr_met_p(c,j)     = harvest_p_to_litr_met_p(c,j)     + &
-                         hrv_frootp_xfer_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+                    !harvest_p_to_litr_met_p(c,j)     = harvest_p_to_litr_met_p(c,j)     + &
+                    !     hrv_frootp_xfer_to_litter(p)     * wtcol(p) * froot_prof(p,j)
                     harvest_p_to_litr_met_p(c,j)  = harvest_p_to_litr_met_p(c,j)  + &
                          hrv_livestemp_xfer_to_litter(p)  * wtcol(p) * stem_prof(p,j)
                     harvest_p_to_litr_met_p(c,j)  = harvest_p_to_litr_met_p(c,j)  + &

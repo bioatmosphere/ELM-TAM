@@ -598,8 +598,12 @@ contains
               ! ECA competition calculate root NP uptake as a function of fine root biomass
               ! better to initialize root CNP pools with a non-zero value
               if (veg_pp%itype(p) .ne. noveg) then
+#if defined(TAM)
+
+#else
                  this%frootn_patch(p) = frootc_patch(p) / veg_vp%frootcn(veg_pp%itype(p))
                  this%frootn_storage_patch(p) = frootc_storage_patch(p) / veg_vp%frootcn(veg_pp%itype(p))
+#endif
               end if
           end if
 

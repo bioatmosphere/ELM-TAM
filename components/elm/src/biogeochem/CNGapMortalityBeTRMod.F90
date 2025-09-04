@@ -141,7 +141,11 @@ contains
 
          ! displayed pools
          veg_cf%m_leafc_to_litter(p)               = veg_cs%leafc(p)               * m
+#if defined(TAM)
+
+#else
          veg_cf%m_frootc_to_litter(p)              = veg_cs%frootc(p)              * m
+#endif
          veg_cf%m_livestemc_to_litter(p)           = veg_cs%livestemc(p)           * m
          veg_cf%m_deadstemc_to_litter(p)           = veg_cs%deadstemc(p)           * m
          veg_cf%m_livecrootc_to_litter(p)          = veg_cs%livecrootc(p)          * m
@@ -176,8 +180,12 @@ contains
          ! displayed pools
          veg_nf%m_leafn_to_litter(p)               = veg_ns%leafn(p)               * m &
             * gap_indicator(gid_m_leafn_to_litter)
+#if defined(TAM)
+
+#else
          veg_nf%m_frootn_to_litter(p)              = veg_ns%frootn(p)              * m &
             * gap_indicator(gid_m_frootn_to_litter)
+#endif
          veg_nf%m_livestemn_to_litter(p)           = veg_ns%livestemn(p)           * m &
             * gap_indicator(gid_m_livestemn_to_litter)
          veg_nf%m_deadstemn_to_litter(p)           = veg_ns%deadstemn(p)           * m &
@@ -234,7 +242,11 @@ contains
 
          ! displayed pools
          veg_pf%m_leafp_to_litter(p)               = veg_ps%leafp(p)               * m
+#if defined(TAM)
+
+#else
          veg_pf%m_frootp_to_litter(p)              = veg_ps%frootp(p)              * m
+#endif
          veg_pf%m_livestemp_to_litter(p)           = veg_ps%livestemp(p)           * m
          veg_pf%m_deadstemp_to_litter(p)           = veg_ps%deadstemp(p)           * m
          veg_pf%m_livecrootp_to_litter(p)          = veg_ps%livecrootp(p)          * m
@@ -308,17 +320,28 @@ contains
          lf_flab                             =>    veg_vp%lf_flab                                     , & ! Input:  [real(r8) (:)   ]  leaf litter labile fraction
          lf_fcel                             =>    veg_vp%lf_fcel                                     , & ! Input:  [real(r8) (:)   ]  leaf litter cellulose fraction
          lf_flig                             =>    veg_vp%lf_flig                                     , & ! Input:  [real(r8) (:)   ]  leaf litter lignin fraction
+         !fr_flab                             =>    veg_vp%fr_flab                                     , & ! Input:  [real(r8) (:)   ]  fine root litter labile fraction
+         !fr_fcel                             =>    veg_vp%fr_fcel                                     , & ! Input:  [real(r8) (:)   ]  fine root litter cellulose fraction
+         !fr_flig                             =>    veg_vp%fr_flig                                     , & ! Input:  [real(r8) (:)   ]  fine root litter lignin fraction
+#if defined(TAM)
+
+
+#else
          fr_flab                             =>    veg_vp%fr_flab                                     , & ! Input:  [real(r8) (:)   ]  fine root litter labile fraction
          fr_fcel                             =>    veg_vp%fr_fcel                                     , & ! Input:  [real(r8) (:)   ]  fine root litter cellulose fraction
          fr_flig                             =>    veg_vp%fr_flig                                     , & ! Input:  [real(r8) (:)   ]  fine root litter lignin fraction
-
-         leaf_prof                           =>    cnstate_vars%leaf_prof_patch                           , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of leaves
          froot_prof                          =>    cnstate_vars%froot_prof_patch                          , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of fine roots
+         m_frootc_to_litter                  =>    veg_cf%m_frootc_to_litter               , & ! Input:  [real(r8) (:)   ]
+         m_frootn_to_litter                  =>    veg_nf%m_frootn_to_litter             , & ! Input:  [real(r8) (:)   ]
+         m_frootp_to_litter                  =>    veg_pf%m_frootp_to_litter             , & ! Input:  [real(r8) (:)   ]
+#endif
+         leaf_prof                           =>    cnstate_vars%leaf_prof_patch                           , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of leaves
+         !froot_prof                          =>    cnstate_vars%froot_prof_patch                          , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of fine roots
          croot_prof                          =>    cnstate_vars%croot_prof_patch                          , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of coarse roots
          stem_prof                           =>    cnstate_vars%stem_prof_patch                           , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of stems
 
          m_leafc_to_litter                   =>    veg_cf%m_leafc_to_litter                , & ! Input:  [real(r8) (:)   ]
-         m_frootc_to_litter                  =>    veg_cf%m_frootc_to_litter               , & ! Input:  [real(r8) (:)   ]
+         !m_frootc_to_litter                  =>    veg_cf%m_frootc_to_litter               , & ! Input:  [real(r8) (:)   ]
          m_livestemc_to_litter               =>    veg_cf%m_livestemc_to_litter            , & ! Input:  [real(r8) (:)   ]
          m_deadstemc_to_litter               =>    veg_cf%m_deadstemc_to_litter            , & ! Input:  [real(r8) (:)   ]
          m_livecrootc_to_litter              =>    veg_cf%m_livecrootc_to_litter           , & ! Input:  [real(r8) (:)   ]
@@ -339,7 +362,7 @@ contains
          m_gresp_xfer_to_litter              =>    veg_cf%m_gresp_xfer_to_litter           , & ! Input:  [real(r8) (:)   ]
 
          m_leafn_to_litter                   =>    veg_nf%m_leafn_to_litter              , & ! Input:  [real(r8) (:)   ]
-         m_frootn_to_litter                  =>    veg_nf%m_frootn_to_litter             , & ! Input:  [real(r8) (:)   ]
+         !m_frootn_to_litter                  =>    veg_nf%m_frootn_to_litter             , & ! Input:  [real(r8) (:)   ]
          m_livestemn_to_litter               =>    veg_nf%m_livestemn_to_litter          , & ! Input:  [real(r8) (:)   ]
          m_deadstemn_to_litter               =>    veg_nf%m_deadstemn_to_litter          , & ! Input:  [real(r8) (:)   ]
          m_livecrootn_to_litter              =>    veg_nf%m_livecrootn_to_litter         , & ! Input:  [real(r8) (:)   ]
@@ -360,7 +383,7 @@ contains
 
          !! add phosphorus  -X.YANG
          m_leafp_to_litter                   =>    veg_pf%m_leafp_to_litter              , & ! Input:  [real(r8) (:)   ]
-         m_frootp_to_litter                  =>    veg_pf%m_frootp_to_litter             , & ! Input:  [real(r8) (:)   ]
+         !m_frootp_to_litter                  =>    veg_pf%m_frootp_to_litter             , & ! Input:  [real(r8) (:)   ]
          m_livestemp_to_litter               =>    veg_pf%m_livestemp_to_litter          , & ! Input:  [real(r8) (:)   ]
          m_deadstemp_to_litter               =>    veg_pf%m_deadstemp_to_litter          , & ! Input:  [real(r8) (:)   ]
          m_livecrootp_to_litter              =>    veg_pf%m_livecrootp_to_litter         , & ! Input:  [real(r8) (:)   ]
@@ -406,7 +429,11 @@ contains
                   if (veg_pp%active(p)) then
                      write(*,*)'===================================='
                      write(*,*)'01 m_leafn_to_litter             =',p,m_leafn_to_litter(p)
+#if defined(TAM)
+
+#else
                      write(*,*)'02 m_frootn_to_litter            =',p,m_frootn_to_litter(p)
+#endif
                      write(*,*)'03 m_retransn_to_litter          =',p,m_retransn_to_litter(p)
                      write(*,*)'04 m_leafn_storage_to_litter     =',p,m_leafn_storage_to_litter(p)
                      write(*,*)'05 m_frootn_storage_to_litter    =',p,m_frootn_storage_to_litter(p)
@@ -444,13 +471,16 @@ contains
                           m_leafc_to_litter(p) * lf_flig(ivt(p)) * wtcol(p) * leaf_prof(p,j)
 
                      ! fine root gap mortality carbon fluxes
+#if defined(TAM)
+
+#else
                      gap_mortality_c_to_litr_met_c(c,j) = gap_mortality_c_to_litr_met_c(c,j) + &
                           m_frootc_to_litter(p) * fr_flab(ivt(p)) * wtcol(p) * froot_prof(p,j)
                      gap_mortality_c_to_litr_cel_c(c,j) = gap_mortality_c_to_litr_cel_c(c,j) + &
                           m_frootc_to_litter(p) * fr_fcel(ivt(p)) * wtcol(p) * froot_prof(p,j)
                      gap_mortality_c_to_litr_lig_c(c,j) = gap_mortality_c_to_litr_lig_c(c,j) + &
                           m_frootc_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * froot_prof(p,j)
-
+#endif
                      ! wood gap mortality carbon fluxes
                      gap_mortality_c_to_cwdc(c,j)  = gap_mortality_c_to_cwdc(c,j)  + &
                           (m_livestemc_to_litter(p) + m_deadstemc_to_litter(p))  * wtcol(p) * stem_prof(p,j)
@@ -459,8 +489,12 @@ contains
                      ! storage gap mortality carbon fluxes
                      gap_mortality_c_to_litr_met_c(c,j)      = gap_mortality_c_to_litr_met_c(c,j)      + &
                           (m_leafc_storage_to_litter(p) + m_gresp_storage_to_litter(p))      * wtcol(p) * leaf_prof(p,j)
+#if defined(TAM)
+
+#else
                      gap_mortality_c_to_litr_met_c(c,j)     = gap_mortality_c_to_litr_met_c(c,j)     + &
                           m_frootc_storage_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+#endif
                      gap_mortality_c_to_litr_met_c(c,j)  = gap_mortality_c_to_litr_met_c(c,j)  + &
                           (m_livestemc_storage_to_litter(p) + m_deadstemc_storage_to_litter(p))  * wtcol(p) * stem_prof(p,j)
                      gap_mortality_c_to_litr_met_c(c,j) = gap_mortality_c_to_litr_met_c(c,j) + &
@@ -469,8 +503,12 @@ contains
                      ! transfer gap mortality carbon fluxes
                      gap_mortality_c_to_litr_met_c(c,j)      = gap_mortality_c_to_litr_met_c(c,j)      + &
                           (m_leafc_xfer_to_litter(p) + m_gresp_xfer_to_litter(p))     * wtcol(p) * leaf_prof(p,j)
+#if defined(TAM)
+
+#else
                      gap_mortality_c_to_litr_met_c(c,j)     = gap_mortality_c_to_litr_met_c(c,j)     + &
                           m_frootc_xfer_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+#endif
                      gap_mortality_c_to_litr_met_c(c,j)  = gap_mortality_c_to_litr_met_c(c,j)  + &
                           (m_livestemc_xfer_to_litter(p) + m_deadstemc_xfer_to_litter(p))  * wtcol(p) * stem_prof(p,j)
                      gap_mortality_c_to_litr_met_c(c,j) = gap_mortality_c_to_litr_met_c(c,j) + &
@@ -485,13 +523,16 @@ contains
                           m_leafn_to_litter(p) * lf_flig(ivt(p)) * wtcol(p) * leaf_prof(p,j)
 
                      ! fine root litter nitrogen fluxes
+#if defined(TAM)
+
+#else
                      gap_mortality_n_to_litr_met_n(c,j) = gap_mortality_n_to_litr_met_n(c,j) + &
                           m_frootn_to_litter(p) * fr_flab(ivt(p)) * wtcol(p) * froot_prof(p,j)
                      gap_mortality_n_to_litr_cel_n(c,j) = gap_mortality_n_to_litr_cel_n(c,j) + &
                           m_frootn_to_litter(p) * fr_fcel(ivt(p)) * wtcol(p) * froot_prof(p,j)
                      gap_mortality_n_to_litr_lig_n(c,j) = gap_mortality_n_to_litr_lig_n(c,j) + &
                           m_frootn_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * froot_prof(p,j)
-
+#endif
                      ! wood gap mortality nitrogen fluxes
                      gap_mortality_n_to_cwdn(c,j)  = gap_mortality_n_to_cwdn(c,j)  + &
                           (m_livestemn_to_litter(p) + m_deadstemn_to_litter(p))  * wtcol(p) * stem_prof(p,j)
@@ -505,8 +546,12 @@ contains
                      ! storage gap mortality nitrogen fluxes
                      gap_mortality_n_to_litr_met_n(c,j)      = gap_mortality_n_to_litr_met_n(c,j)      + &
                           m_leafn_storage_to_litter(p)      * wtcol(p) * leaf_prof(p,j)
+#if defined(TAM)
+
+#else
                      gap_mortality_n_to_litr_met_n(c,j)     = gap_mortality_n_to_litr_met_n(c,j)     + &
                           m_frootn_storage_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+#endif
                      gap_mortality_n_to_litr_met_n(c,j)  = gap_mortality_n_to_litr_met_n(c,j)  + &
                           (m_livestemn_storage_to_litter(p) + m_deadstemn_storage_to_litter(p))  * wtcol(p) * stem_prof(p,j)
                      gap_mortality_n_to_litr_met_n(c,j) = gap_mortality_n_to_litr_met_n(c,j) + &
@@ -515,8 +560,12 @@ contains
                      ! transfer gap mortality nitrogen fluxes
                      gap_mortality_n_to_litr_met_n(c,j)      = gap_mortality_n_to_litr_met_n(c,j)      + &
                           m_leafn_xfer_to_litter(p)      * wtcol(p) * leaf_prof(p,j)
+#if defined(TAM)
+
+#else
                      gap_mortality_n_to_litr_met_n(c,j)     = gap_mortality_n_to_litr_met_n(c,j)     + &
                           m_frootn_xfer_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+#endif
                      gap_mortality_n_to_litr_met_n(c,j)  = gap_mortality_n_to_litr_met_n(c,j)  + &
                           (m_livestemn_xfer_to_litter(p) + m_deadstemn_xfer_to_litter(p))  * wtcol(p) * stem_prof(p,j)
                      gap_mortality_n_to_litr_met_n(c,j) = gap_mortality_n_to_litr_met_n(c,j) + &
@@ -531,13 +580,16 @@ contains
                           m_leafp_to_litter(p) * lf_flig(ivt(p)) * wtcol(p) * leaf_prof(p,j)
 
                      ! fine root litter phosphorus fluxes
+#if defined(TAM)
+
+#else
                      gap_mortality_p_to_litr_met_p(c,j) = gap_mortality_p_to_litr_met_p(c,j) + &
                           m_frootp_to_litter(p) * fr_flab(ivt(p)) * wtcol(p) * froot_prof(p,j)
                      gap_mortality_p_to_litr_cel_p(c,j) = gap_mortality_p_to_litr_cel_p(c,j) + &
                           m_frootp_to_litter(p) * fr_fcel(ivt(p)) * wtcol(p) * froot_prof(p,j)
                      gap_mortality_p_to_litr_lig_p(c,j) = gap_mortality_p_to_litr_lig_p(c,j) + &
                           m_frootp_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * froot_prof(p,j)
-
+#endif
                      ! wood gap mortality phosphorus fluxes
                      gap_mortality_p_to_cwdp(c,j)  = gap_mortality_p_to_cwdp(c,j)  + &
                           (m_livestemp_to_litter(p) + m_deadstemp_to_litter(p))  * wtcol(p) * stem_prof(p,j)
@@ -551,8 +603,12 @@ contains
                      ! storage gap mortality phosphorus fluxes
                      gap_mortality_p_to_litr_met_p(c,j)      = gap_mortality_p_to_litr_met_p(c,j)      + &
                           m_leafp_storage_to_litter(p)      * wtcol(p) * leaf_prof(p,j)
+#if defined(TAM)
+
+#else
                      gap_mortality_p_to_litr_met_p(c,j)     = gap_mortality_p_to_litr_met_p(c,j)     + &
                           m_frootp_storage_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+#endif
                      gap_mortality_p_to_litr_met_p(c,j)  = gap_mortality_p_to_litr_met_p(c,j)  + &
                           (m_livestemp_storage_to_litter(p) + m_deadstemp_storage_to_litter(p))  * wtcol(p) * stem_prof(p,j)
                      gap_mortality_p_to_litr_met_p(c,j) = gap_mortality_p_to_litr_met_p(c,j) + &
@@ -561,8 +617,12 @@ contains
                      ! transfer gap mortality phosphorus fluxes
                      gap_mortality_p_to_litr_met_p(c,j)      = gap_mortality_p_to_litr_met_p(c,j)      + &
                           m_leafp_xfer_to_litter(p)      * wtcol(p) * leaf_prof(p,j)
+#if defined(TAM)
+
+#else
                      gap_mortality_p_to_litr_met_p(c,j)     = gap_mortality_p_to_litr_met_p(c,j)     + &
                           m_frootp_xfer_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+#endif
                      gap_mortality_p_to_litr_met_p(c,j)  = gap_mortality_p_to_litr_met_p(c,j)  + &
                           (m_livestemp_xfer_to_litter(p) + m_deadstemp_xfer_to_litter(p))  * wtcol(p) * stem_prof(p,j)
                      gap_mortality_p_to_litr_met_p(c,j) = gap_mortality_p_to_litr_met_p(c,j) + &

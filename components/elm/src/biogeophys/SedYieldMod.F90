@@ -104,8 +104,11 @@ contains
          tlai             =>    canopystate_vars%tlai_patch         , & ! Input: [real(r8) (:) ] LAI
          hbot             =>    canopystate_vars%hbot_patch         , & ! Input: [real(r8) (:) ] canopy bottom (m)
          htop             =>    canopystate_vars%htop_patch         , & ! Input: [real(r8) (:) ] canopy top (m)
+#if defined(TAM)
 
+#else
          froot_prof       =>    cnstate_vars%froot_prof_patch       , & ! Input: [real(r8) (:,:) ] fine root vertical profile (1/m)
+#endif
          croot_prof       =>    cnstate_vars%croot_prof_patch       , & ! Input: [real(r8) (:,:) ] coarse root vertical profile (1/m)
 
          hslp_p10         =>    col_pp%hslp_p10                     , & ! Input: [real(r8) (:,:) ] hillslope gradient percentiles
@@ -214,8 +217,12 @@ contains
                      ! LAI and root biomass (kgC/m3): OM/OC = 1.72 
                      Clai = 1._r8 - exp(-tlai(p))
                      PCT_gnd = 100._r8 * max(Crsd,Clai) ! ground cover in percentage
+#if defined(TAM)
+
+#else
                      Broot = 1.e-3_r8 * ( veg_cs%frootc(p)*froot_prof(p,1) + &
                         (veg_cs%livecrootc(p)+veg_cs%deadcrootc(p))*croot_prof(p,1) )
+#endif
                      fgndcov = exp( -gcbc_p(veg_pp%itype(p))*PCT_gnd - &
                         gcbr_p(veg_pp%itype(p))*Broot ) 
                      if( crop(veg_pp%itype(p)) >= 1 .or. iscft(veg_pp%itype(p)))then
@@ -258,8 +265,12 @@ contains
                      ! LAI and root biomass (kgC/m3): OM/OC = 1.72
                      Clai = 1._r8 - exp(-tlai(p))
                      PCT_gnd = 100._r8 * max(Crsd,Clai) ! ground cover in percentage
+#if defined(TAM)
+
+#else
                      Broot = 1.e-3_r8 * ( veg_cs%frootc(p)*froot_prof(p,1) + &
                         (veg_cs%livecrootc(p)+veg_cs%deadcrootc(p))*croot_prof(p,1) )
+#endif
                      fgndcov = exp( -gcbc_q(veg_pp%itype(p))*PCT_gnd - &
                         gcbr_q(veg_pp%itype(p))*Broot )
 

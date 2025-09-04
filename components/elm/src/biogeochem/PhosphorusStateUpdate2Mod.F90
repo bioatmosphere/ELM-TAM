@@ -85,7 +85,13 @@ contains
 
          ! displayed pools
          veg_ps%leafp(p)              =  veg_ps%leafp(p)      - veg_pf%m_leafp_to_litter(p)      * dt
+#if defined(TAM)
+         veg_ps%froottp(p)             =  veg_ps%froottp(p)     - veg_pf%m_froottp_to_litter(p)  * dt
+         veg_ps%frootap(p)             =  veg_ps%frootap(p)     - veg_pf%m_frootap_to_litter(p)  * dt
+         veg_ps%frootmp(p)             =  veg_ps%frootmp(p)     - veg_pf%m_frootmp_to_litter(p)  * dt
+#else
          veg_ps%frootp(p)             =  veg_ps%frootp(p)     - veg_pf%m_frootp_to_litter(p)     * dt
+#endif
          veg_ps%livestemp(p)          =  veg_ps%livestemp(p)  - veg_pf%m_livestemp_to_litter(p)  * dt
          veg_ps%deadstemp(p)          =  veg_ps%deadstemp(p)  - veg_pf%m_deadstemp_to_litter(p)  * dt
          veg_ps%livecrootp(p)         =  veg_ps%livecrootp(p) - veg_pf%m_livecrootp_to_litter(p) * dt
@@ -173,7 +179,13 @@ contains
 
          ! displayed pools
          veg_ps%leafp(p)      = veg_ps%leafp(p)      - veg_pf%hrv_leafp_to_litter(p)      * dt
+#if defined(TAM)
+         veg_ps%froottp(p)     = veg_ps%froottp(p)     - veg_pf%hrv_froottp_to_litter(p)   * dt
+         veg_ps%frootap(p)     = veg_ps%frootap(p)     - veg_pf%hrv_frootap_to_litter(p)   * dt
+         veg_ps%frootmp(p)     = veg_ps%frootmp(p)     - veg_pf%hrv_frootmp_to_litter(p)   * dt
+#else
          veg_ps%frootp(p)     = veg_ps%frootp(p)     - veg_pf%hrv_frootp_to_litter(p)     * dt
+#endif
          veg_ps%livestemp(p)  = veg_ps%livestemp(p)  - veg_pf%hrv_livestemp_to_litter(p)  * dt
          veg_ps%deadstemp(p)  = veg_ps%deadstemp(p)  - veg_pf%hrv_deadstemp_to_prod10p(p) * dt
          veg_ps%deadstemp(p)  = veg_ps%deadstemp(p)  - veg_pf%hrv_deadstemp_to_prod100p(p)* dt

@@ -76,7 +76,13 @@ contains
     integer  :: alt_ind
     integer  :: nlevbed
     ! debugging temp variables
+#if defined(TAM)
+    real(r8) :: froott_prof_sum
+    real(r8) :: froota_prof_sum
+    real(r8) :: frootm_prof_sum
+#else
     real(r8) :: froot_prof_sum
+#endif
     real(r8) :: croot_prof_sum
     real(r8) :: leaf_prof_sum
     real(r8) :: stem_prof_sum
@@ -97,8 +103,14 @@ contains
          ndep_prof            => cnstate_vars%ndep_prof_col                , & ! Input:  [real(r8)  (:,:) ]  (1/m) profile for N fixation additions
          pdep_prof            => cnstate_vars%pdep_prof_col                , & ! Input:  [real(r8)  (:,:) ]  (1/m) profile for P depostition additions          
          
-         leaf_prof            => cnstate_vars%leaf_prof_patch              , & ! Output:  [real(r8) (:,:) ]  (1/m) profile of leaves                         
-         froot_prof           => cnstate_vars%froot_prof_patch             , & ! Output:  [real(r8) (:,:) ]  (1/m) profile of fine roots                     
+         leaf_prof            => cnstate_vars%leaf_prof_patch              , & ! Output:  [real(r8) (:,:) ]  (1/m) profile of leaves
+#if defined(TAM)
+         froott_prof          => cnstate_vars%froott_prof_patch            , & ! Output:  [real(r8) (:,:) ]  (1/m) profile of fine roots
+         froota_prof          => cnstate_vars%froota_prof_patch            , & ! Output:  [real(r8) (:,:) ]  (1/m) profile of fine roots
+         frootm_prof          => cnstate_vars%frootm_prof_patch            , & ! Output:  [real(r8) (:,:) ]  (1/m) profile of fine roots
+#else
+         froot_prof           => cnstate_vars%froot_prof_patch             , & ! Output:  [real(r8) (:,:) ]  (1/m) profile of fine roots
+#endif
          croot_prof           => cnstate_vars%croot_prof_patch             , & ! Output:  [real(r8) (:,:) ]  (1/m) profile of coarse roots                   
          stem_prof            => cnstate_vars%stem_prof_patch              , & ! Output:  [real(r8) (:,:) ]  (1/m) profile of stems                          
          
@@ -118,7 +130,13 @@ contains
 
          ! initialize profiles to zero
          leaf_prof(begp:endp, :)      = 0._r8
+#if defined(TAM)
+         froott_prof(begp:endp, :)    = 0._r8
+         froota_prof(begp:endp, :)    = 0._r8
+         frootm_prof(begp:endp, :)    = 0._r8
+#else
          froot_prof(begp:endp, :)     = 0._r8
+#endif
          croot_prof(begp:endp, :)     = 0._r8
          stem_prof(begp:endp, :)      = 0._r8
          nfixation_prof(begc:endc, :) = 0._r8
@@ -195,7 +213,14 @@ contains
                ! where there is not permafrost extending to the surface, integrate the profiles over the active layer
                ! this is equivalnet to integrating over all soil layers outside of permafrost regions
                do j = 1, min(max(altmax_lastyear_indx(c), 1), nlevdecomp)
+#if defined(TAM)
+                  !TAM: assuming that the root fraction is the same for all root types
+                  froott_prof(p,j) = cinput_rootfr(p,j) / rootfr_tot
+                  froota_prof(p,j) = cinput_rootfr(p,j) / rootfr_tot
+                  frootm_prof(p,j) = cinput_rootfr(p,j) / rootfr_tot
+#else
                   froot_prof(p,j) = cinput_rootfr(p,j) / rootfr_tot
+#endif
                   croot_prof(p,j) = cinput_rootfr(p,j) / rootfr_tot
                   ! set all surface processes to shallower profile
                   if (j <= nlevbed) then
@@ -212,7 +237,13 @@ contains
                end do
             else
                ! if fully frozen, or no roots, put everything in the top layer
+#if defined(TAM)
+               froott_prof(p,1) = 1./dzsoi_decomp(1)
+               froota_prof(p,1) = 1./dzsoi_decomp(1)
+               frootm_prof(p,1) = 1./dzsoi_decomp(1)
+#else
                froot_prof(p,1) = 1./dzsoi_decomp(1)
+#endif
                croot_prof(p,1) = 1./dzsoi_decomp(1)
                leaf_prof(p,1) = 1./dzsoi_decomp(1)
                stem_prof(p,1) = 1./dzsoi_decomp(1)
@@ -282,7 +313,13 @@ contains
 
          ! for one layer decomposition model, set profiles to unity
          leaf_prof(begp:endp, :) = 1._r8
+#if defined(TAM)
+         froott_prof(begp:endp, :) = 1._r8
+         froota_prof(begp:endp, :) = 1._r8
+         frootm_prof(begp:endp, :) = 1._r8
+#else
          froot_prof(begp:endp, :) = 1._r8
+#endif
          croot_prof(begp:endp, :) = 1._r8
          stem_prof(begp:endp, :) = 1._r8
          nfixation_prof(begc:endc, :) = 1._r8
@@ -324,21 +361,38 @@ contains
 
       do fp = 1,num_soilp
          p = filter_soilp(fp)
+#if defined(TAM)
+         froott_prof_sum = 0.
+         froota_prof_sum = 0.
+         frootm_prof_sum = 0.
+#else
          froot_prof_sum = 0.
+#endif
          croot_prof_sum = 0.
          leaf_prof_sum = 0.
          stem_prof_sum = 0.
          do j = 1, nlevdecomp
+#if defined(TAM)
+            froott_prof_sum = froott_prof_sum + froott_prof(p,j) *  dzsoi_decomp(j)
+            froota_prof_sum = froota_prof_sum + froota_prof(p,j) *  dzsoi_decomp(j)
+            frootm_prof_sum = frootm_prof_sum + frootm_prof(p,j) *  dzsoi_decomp(j)
+#else
             froot_prof_sum = froot_prof_sum + froot_prof(p,j) *  dzsoi_decomp(j)
+#endif
             croot_prof_sum = croot_prof_sum + croot_prof(p,j) *  dzsoi_decomp(j)
             leaf_prof_sum = leaf_prof_sum + leaf_prof(p,j) *  dzsoi_decomp(j)
             stem_prof_sum = stem_prof_sum + stem_prof(p,j) *  dzsoi_decomp(j)
          end do
+#if defined(TAM)
+         write(iulog, *) 'profile sums: ', froott_prof_sum, froota_prof_sum, frootm_prof_sum, &
+            croot_prof_sum, leaf_prof_sum, stem_prof_sum
+#else
          if ( ( abs(froot_prof_sum - 1._r8) > delta ) .or.  ( abs(croot_prof_sum - 1._r8) > delta ) .or. &
               ( abs(stem_prof_sum - 1._r8) > delta ) .or.  ( abs(leaf_prof_sum - 1._r8) > delta ) ) then
             write(iulog, *) 'profile sums: ', froot_prof_sum, croot_prof_sum, leaf_prof_sum, stem_prof_sum
             call endrun(msg=' ERROR: sum-1 > delta'//errMsg(__FILE__, __LINE__))
          endif
+#endif
       end do
 
     end associate 

@@ -117,7 +117,7 @@ module pftvarcon
   real(r8), allocatable :: flnr(:)        !fraction of leaf N in Rubisco [no units]
   real(r8), allocatable :: woody(:)       !woody lifeform flag (0 = non-woody, 1 = tree, 2 = shrub)
   real(r8), allocatable :: lflitcn(:)     !leaf litter C:N (gC/gN)
-  real(r8), allocatable :: frootcn(:)     !fine root C:N (gC/gN)
+  !real(r8), allocatable :: frootcn(:)     !fine root C:N (gC/gN)
   real(r8), allocatable :: livewdcn(:)    !live wood (phloem and ray parenchyma) C:N (gC/gN)
   real(r8), allocatable :: deadwdcn(:)    !dead wood (xylem and heartwood) C:N (gC/gN)
   real(r8), allocatable :: grperc(:)      !growth respiration parameter
@@ -128,9 +128,40 @@ module pftvarcon
   ! add pft dependent parameters for phosphorus -X.YANG
   real(r8), allocatable :: leafcp(:)      !leaf C:P [gC/gP]
   real(r8), allocatable :: lflitcp(:)     !leaf litter C:P (gC/gP)
-  real(r8), allocatable :: frootcp(:)     !fine root C:P (gC/gP)
+  !real(r8), allocatable :: frootcp(:)     !fine root C:P (gC/gP)
   real(r8), allocatable :: livewdcp(:)    !live wood (phloem and ray parenchyma) C:P (gC/gP)
   real(r8), allocatable :: deadwdcp(:)    !dead wood (xylem and heartwood) C:P (gC/gP)
+  
+#if defined(TAM)
+  real(r8), allocatable :: froottcn(:)    !fine root C:N (gC/gN)
+  real(r8), allocatable :: frootacn(:)    !fine root C:N (gC/gN)
+  real(r8), allocatable :: frootmcn(:)    !fine root C:N (gC/gN)
+  real(r8), allocatable :: froottcp(:)    !fine root C:P (gC/gP)
+  real(r8), allocatable :: frootacp(:)    !fine root C:P (gC/gP)
+  real(r8), allocatable :: frootmcp(:)    !fine root C:P (gC/gP)
+  real(r8), allocatable :: froott_leaf(:)  !allocation parameter: new fine root C per new leaf C (gC/gC) 
+  real(r8), allocatable :: froota_leaf(:)  !allocation parameter: new fine root C per new leaf C (gC/gC) 
+  real(r8), allocatable :: frootm_leaf(:)  !allocation parameter: new fine root C per new leaf C (gC/gC) 
+  real(r8), allocatable :: froott_long(:)  !fine root longevity(yrs)
+  real(r8), allocatable :: froota_long(:)  !fine root longevity(yrs)
+  real(r8), allocatable :: frootm_long(:)  !fine root longevity(yrs)
+  real(r8), allocatable :: frt_flab(:)      !fine root litter labile fraction
+  real(r8), allocatable :: frt_fcel(:)      !fine root litter cellulose fraction
+  real(r8), allocatable :: frt_flig(:)      !fine root litter lignin fraction
+  real(r8), allocatable :: fra_flab(:)      !fine root litter labile fraction
+  real(r8), allocatable :: fra_fcel(:)      !fine root litter cellulose fraction
+  real(r8), allocatable :: fra_flig(:)      !fine root litter lignin fraction
+  real(r8), allocatable :: frm_flab(:)      !fine root litter labile fraction
+  real(r8), allocatable :: frm_fcel(:)      !fine root litter cellulose fraction
+  real(r8), allocatable :: frm_flig(:)      !fine root litter lignin fraction
+#else
+  real(r8), allocatable :: frootcn(:)     !fine root C:N (gC/gN)
+  real(r8), allocatable :: frootcp(:)     !fine root C:P (gC/gP)
+  real(r8), allocatable :: froot_long(:)   !fine root longevity(yrs)
+  real(r8), allocatable :: fr_flab(:)      !fine root litter labile fraction
+  real(r8), allocatable :: fr_fcel(:)      !fine root litter cellulose fraction
+  real(r8), allocatable :: fr_flig(:)      !fine root litter lignin fraction
+#endif
 
   ! for crop
 
@@ -179,11 +210,11 @@ module pftvarcon
   real(r8), allocatable :: lf_flab(:)      !leaf litter labile fraction
   real(r8), allocatable :: lf_fcel(:)      !leaf litter cellulose fraction
   real(r8), allocatable :: lf_flig(:)      !leaf litter lignin fraction
-  real(r8), allocatable :: fr_flab(:)      !fine root litter labile fraction
-  real(r8), allocatable :: fr_fcel(:)      !fine root litter cellulose fraction
-  real(r8), allocatable :: fr_flig(:)      !fine root litter lignin fraction
+  !real(r8), allocatable :: fr_flab(:)      !fine root litter labile fraction
+  !real(r8), allocatable :: fr_fcel(:)      !fine root litter cellulose fraction
+  !real(r8), allocatable :: fr_flig(:)      !fine root litter lignin fraction
   real(r8), allocatable :: leaf_long(:)    !leaf longevity (yrs)
-  real(r8), allocatable :: froot_long(:)   !fine root longevity(yrs)
+  !real(r8), allocatable :: froot_long(:)   !fine root longevity(yrs)
   real(r8), allocatable :: evergreen(:)    !binary flag for evergreen leaf habit (0 or 1)
   real(r8), allocatable :: stress_decid(:) !binary flag for stress-deciduous leaf habit (0 or 1)
   real(r8), allocatable :: season_decid(:) !binary flag for seasonal-deciduous leaf habit (0 or 1)
@@ -475,14 +506,14 @@ contains
     allocate( flnr          (0:mxpft) )        
     allocate( woody         (0:mxpft) )       
     allocate( lflitcn       (0:mxpft) )      
-    allocate( frootcn       (0:mxpft) )      
+    !allocate( frootcn       (0:mxpft) )      
     allocate( livewdcn      (0:mxpft) )     
     allocate( deadwdcn      (0:mxpft) )     
 
     ! add phosphorus 
     allocate( leafcp        (0:mxpft) )      
     allocate( lflitcp       (0:mxpft) )      
-    allocate( frootcp       (0:mxpft) )      
+    !allocate( frootcp       (0:mxpft) )      
     allocate( livewdcp      (0:mxpft) )     
     allocate( deadwdcp      (0:mxpft) )     
 
@@ -492,7 +523,36 @@ contains
 
     allocate( mergetoelmpft (0:mxpft) )
     allocate( is_pft_known_to_model  (0:mxpft) )
-
+#if defined(TAM)
+    allocate( froottcn      (0:mxpft) )
+    allocate( frootacn      (0:mxpft) )
+    allocate( frootmcn      (0:mxpft) )
+    allocate( froottcp      (0:mxpft) )
+    allocate( frootacp      (0:mxpft) )
+    allocate( frootmcp      (0:mxpft) )
+    allocate( froott_leaf   (0:mxpft) )
+    allocate( froota_leaf   (0:mxpft) )
+    allocate( frootm_leaf   (0:mxpft) )     
+    allocate( frt_flab      (0:mxpft) )      
+    allocate( frt_fcel      (0:mxpft) )      
+    allocate( frt_flig      (0:mxpft) )
+    allocate( fra_flab      (0:mxpft) )      
+    allocate( fra_fcel      (0:mxpft) )      
+    allocate( fra_flig      (0:mxpft) )
+    allocate( frm_flab      (0:mxpft) )      
+    allocate( frm_fcel      (0:mxpft) )      
+    allocate( frm_flig      (0:mxpft) )
+    allocate( froott_long   (0:mxpft) )
+    allocate( froota_long   (0:mxpft) )
+    allocate( frootm_long   (0:mxpft) )
+#else
+    allocate( frootcn       (0:mxpft) )
+    allocate( frootcp       (0:mxpft) )
+    allocate( fr_flab       (0:mxpft) )      
+    allocate( fr_fcel       (0:mxpft) )      
+    allocate( fr_flig       (0:mxpft) )
+    allocate( froot_long    (0:mxpft) )
+#endif
     allocate( graincn       (0:mxpft) )      
     allocate( graincp       (0:mxpft) )      
     allocate( mxtmp         (0:mxpft) )        
@@ -529,11 +589,11 @@ contains
     allocate( lf_flab       (0:mxpft) )      
     allocate( lf_fcel       (0:mxpft) )      
     allocate( lf_flig       (0:mxpft) )      
-    allocate( fr_flab       (0:mxpft) )      
-    allocate( fr_fcel       (0:mxpft) )      
-    allocate( fr_flig       (0:mxpft) )      
+    !allocate( fr_flab       (0:mxpft) )      
+    !allocate( fr_fcel       (0:mxpft) )      
+    !allocate( fr_flig       (0:mxpft) )      
     allocate( leaf_long     (0:mxpft) )   
-    allocate( froot_long    (0:mxpft) )
+    !allocate( froot_long    (0:mxpft) )
     allocate( evergreen     (0:mxpft) )    
     allocate( stress_decid  (0:mxpft) ) 
     allocate( season_decid  (0:mxpft) ) 
@@ -710,8 +770,8 @@ contains
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
     call ncd_io('lflitcn',lflitcn, 'read', ncid, readvar=readv, posNOTonfile=.true.)
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
-    call ncd_io('frootcn',frootcn, 'read', ncid, readvar=readv, posNOTonfile=.true.)
-    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    !call ncd_io('frootcn',frootcn, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    !if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
     call ncd_io('livewdcn',livewdcn, 'read', ncid, readvar=readv, posNOTonfile=.true.)
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
     call ncd_io('deadwdcn',deadwdcn, 'read', ncid, readvar=readv, posNOTonfile=.true.)
@@ -722,8 +782,8 @@ contains
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
     call ncd_io('lflitcp',lflitcp, 'read', ncid, readvar=readv, posNOTonfile=.true.)
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
-    call ncd_io('frootcp',frootcp, 'read', ncid, readvar=readv, posNOTonfile=.true.)
-    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    !call ncd_io('frootcp',frootcp, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    !if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
     call ncd_io('livewdcp',livewdcp, 'read', ncid, readvar=readv, posNOTonfile=.true.)
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
     call ncd_io('deadwdcp',deadwdcp, 'read', ncid, readvar=readv, posNOTonfile=.true.)
@@ -750,16 +810,83 @@ contains
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
     call ncd_io('lf_flig',lf_flig, 'read', ncid, readvar=readv, posNOTonfile=.true.)
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
-    call ncd_io('fr_flab',fr_flab, 'read', ncid, readvar=readv, posNOTonfile=.true.)
-    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
-    call ncd_io('fr_fcel',fr_fcel, 'read', ncid, readvar=readv, posNOTonfile=.true.)    
-    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
-    call ncd_io('fr_flig',fr_flig, 'read', ncid, readvar=readv, posNOTonfile=.true.)    
-    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    !call ncd_io('fr_flab',fr_flab, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    !if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    !call ncd_io('fr_fcel',fr_fcel, 'read', ncid, readvar=readv, posNOTonfile=.true.)    
+    !if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    !call ncd_io('fr_flig',fr_flig, 'read', ncid, readvar=readv, posNOTonfile=.true.)    
+    !if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
     call ncd_io('leaf_long',leaf_long, 'read', ncid, readvar=readv, posNOTonfile=.true.)    
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
-    call ncd_io('froot_long',froot_long, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    !call ncd_io('froot_long',froot_long, 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    !if (.not. readv) froot_long = leaf_long
+#if defined(TAM)
+    ! TAM parameters for each PFT; 21 in total
+    call ncd_io('froottcn',froottcn(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    call ncd_io('frootacn',frootacn(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    call ncd_io('frootmcn',frootmcn(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+
+    call ncd_io('froottcp',froottcp(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    call ncd_io('frootacp',frootacp(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    call ncd_io('frootmcp',frootmcp(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+
+    call ncd_io('froott_leaf',froott_leaf(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    call ncd_io('froota_leaf',froota_leaf(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    call ncd_io('frootm_leaf',frootm_leaf(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+
+    call ncd_io('froott_long',froott_long(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    call ncd_io('froota_long',froota_long(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    call ncd_io('frootm_long',frootm_long(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+
+    call ncd_io('frt_flab',frt_flab(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    call ncd_io('frt_fcel',frt_fcel(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    call ncd_io('frt_flig',frt_flig(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+
+    call ncd_io('fra_flab',fra_flab(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    call ncd_io('fra_fcel',fra_fcel(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    call ncd_io('fra_flig',fra_flig(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+
+    call ncd_io('frm_flab',frm_flab(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    call ncd_io('frm_fcel',frm_fcel(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    call ncd_io('frm_flig',frm_flig(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+#else
+    call ncd_io('frootcn',frootcn(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+
+    call ncd_io('frootcp',frootcp(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+
+    call ncd_io('fr_flab',fr_flab(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    call ncd_io('fr_fcel',fr_fcel(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+    call ncd_io('fr_flig',fr_flig(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
+    if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+
+    call ncd_io('froot_long',froot_long(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
     if (.not. readv) froot_long = leaf_long
+#endif
     !if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
     call ncd_io('evergreen',evergreen, 'read', ncid, readvar=readv, posNOTonfile=.true.)    
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))

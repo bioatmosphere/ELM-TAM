@@ -45,7 +45,37 @@ module VegetationPropertiesType
      real(r8), pointer :: flnr          (:) => null()  ! fraction of leaf N in the Rubisco enzyme (gN Rubisco / gN leaf)
      real(r8), pointer :: woody         (:) => null()  ! binary flag for woody lifeform (1=woody, 0=not woody)
      real(r8), pointer :: lflitcn       (:) => null()  ! leaf litter C:N (gC/gN)
+#if defined(TAM)
+     real(r8), pointer :: froottcn      (:) => null()  ! fine root C:N (gC/gN)
+     real(r8), pointer :: frootacn      (:) => null()  ! fine root C:N (gC/gN)
+     real(r8), pointer :: frootmcn      (:) => null()  ! fine root C:N (gC/gN)
+     real(r8), pointer :: froott_leaf   (:) => null()  ! allocation parameter: new fine root C per new leaf C (gC/gC)
+     real(r8), pointer :: froota_leaf   (:) => null()  ! allocation parameter: new fine root C per new leaf C (gC/gC)
+     real(r8), pointer :: frootm_leaf   (:) => null()  ! allocation parameter: new fine root C per new leaf C (gC/gC)
+     real(r8), pointer :: frt_flab       (:) => null()  ! fine root litter labile fraction
+     real(r8), pointer :: frt_fcel       (:) => null()  ! fine root litter cellulose fraction
+     real(r8), pointer :: frt_flig       (:) => null()  ! fine root litter lignin fraction
+     real(r8), pointer :: fra_flab       (:) => null()  ! fine root litter labile fraction
+     real(r8), pointer :: fra_fcel       (:) => null()  ! fine root litter cellulose fraction
+     real(r8), pointer :: fra_flig       (:) => null()  ! fine root litter lignin fraction
+     real(r8), pointer :: frm_flab       (:) => null()  ! fine root litter labile fraction
+     real(r8), pointer :: frm_fcel       (:) => null()  ! fine root litter cellulose fraction
+     real(r8), pointer :: frm_flig       (:) => null()  ! fine root litter lignin fraction
+     real(r8), pointer :: froott_long    (:) => null()  ! fine root longevity (yrs)
+     real(r8), pointer :: froota_long    (:) => null()  ! fine root longevity (yrs)
+     real(r8), pointer :: frootm_long    (:) => null()  ! fine root longevity (yrs)
+     real(r8), pointer :: froottcp      (:) => null()  ! fine root C:P (gC/gP)
+     real(r8), pointer :: frootacp      (:) => null()  ! fine root C:P (gC/gP)
+     real(r8), pointer :: frootmcp      (:) => null()  ! fine root C:P (gC/gP)
+#else
      real(r8), pointer :: frootcn       (:) => null()  ! fine root C:N (gC/gN)
+     real(r8), pointer :: fr_flab       (:) => null()  ! fine root litter labile fraction
+     real(r8), pointer :: fr_fcel       (:) => null()  ! fine root litter cellulose fraction
+     real(r8), pointer :: fr_flig       (:) => null()  ! fine root litter lignin fraction
+     real(r8), pointer :: froot_long    (:) => null()  ! fine root longevity (yrs)
+     real(r8), pointer :: frootcp       (:) => null()  ! fine root C:P (gC/gP)
+#endif 
+     !real(r8), pointer :: frootcn       (:) => null()  ! fine root C:N (gC/gN)
      real(r8), pointer :: livewdcn      (:) => null()  ! live wood (phloem and ray parenchyma) C:N (gC/gN)
      real(r8), pointer :: deadwdcn      (:) => null()  ! dead wood (xylem and heartwood) C:N (gC/gN)
      real(r8), pointer :: graincn       (:) => null()  ! grain C:N (gC/gN) for prognostic crop model
@@ -59,11 +89,11 @@ module VegetationPropertiesType
      real(r8), pointer :: lf_flab       (:) => null()  ! leaf litter labile fraction
      real(r8), pointer :: lf_fcel       (:) => null()  ! leaf litter cellulose fraction
      real(r8), pointer :: lf_flig       (:) => null()  ! leaf litter lignin fraction
-     real(r8), pointer :: fr_flab       (:) => null()  ! fine root litter labile fraction
-     real(r8), pointer :: fr_fcel       (:) => null()  ! fine root litter cellulose fraction
-     real(r8), pointer :: fr_flig       (:) => null()  ! fine root litter lignin fraction
+     !real(r8), pointer :: fr_flab       (:) => null()  ! fine root litter labile fraction
+     !real(r8), pointer :: fr_fcel       (:) => null()  ! fine root litter cellulose fraction
+     !real(r8), pointer :: fr_flig       (:) => null()  ! fine root litter lignin fraction
      real(r8), pointer :: leaf_long     (:) => null()  ! leaf longevity (yrs)
-     real(r8), pointer :: froot_long    (:) => null()  ! fine root longevity (yrs)
+     !real(r8), pointer :: froot_long    (:) => null()  ! fine root longevity (yrs)
      real(r8), pointer :: evergreen     (:) => null()  ! binary flag for evergreen leaf habit (0 or 1)
      real(r8), pointer :: stress_decid  (:) => null()  ! binary flag for stress-deciduous leaf habit (0 or 1)
      real(r8), pointer :: season_decid  (:) => null()  ! binary flag for seasonal-deciduous leaf habit (0 or 1)
@@ -88,7 +118,7 @@ module VegetationPropertiesType
 
      real(r8), pointer :: leafcp        (:) => null()  ! leaf C:P (gC/gP)
      real(r8), pointer :: lflitcp       (:) => null()  ! leaf litter C:P (gC/gP)
-     real(r8), pointer :: frootcp       (:) => null()  ! fine root C:P (gC/gP)
+     !real(r8), pointer :: frootcp       (:) => null()  ! fine root C:P (gC/gP)
      real(r8), pointer :: livewdcp      (:) => null()  ! live wood (phloem and ray parenchyma) C:P (gC/gP)
      real(r8), pointer :: deadwdcp      (:) => null()  ! dead wood (xylem and heartwood) C:P (gC/gP)
      real(r8), pointer :: graincp       (:) => null()  ! grain C:P (gC/gP) for prognostic crop model
@@ -169,12 +199,12 @@ contains
     use pftvarcon , only : smpso, smpsc, fnitr
     use pftvarcon , only : z0mr, displar, dleaf, rhol, rhos, taul, taus, xl
     use pftvarcon , only : c3psn, slatop, dsladlai, leafcn, flnr, woody
-    use pftvarcon , only : lflitcn, frootcn, livewdcn, deadwdcn, froot_leaf, stem_leaf, croot_stem
-    use pftvarcon , only : flivewd, fcur, lf_flab, lf_fcel, lf_flig, fr_flab, fr_fcel, fr_flig
-    use pftvarcon , only : leaf_long, froot_long, evergreen, stress_decid, season_decid
+    use pftvarcon , only : lflitcn, livewdcn, deadwdcn, froot_leaf, stem_leaf, croot_stem
+    use pftvarcon , only : flivewd, fcur, lf_flab, lf_fcel, lf_flig
+    use pftvarcon , only : leaf_long, evergreen, stress_decid, season_decid
     use pftvarcon , only : manunitro, graincn, fleafcn, ffrootcn, fstemcn, dwood
     use pftvarcon , only : presharv, convfact, fyield
-    use pftvarcon , only : leafcp,lflitcp, frootcp, livewdcp, deadwdcp,graincp
+    use pftvarcon , only : leafcp,lflitcp, livewdcp, deadwdcp,graincp
     use pftvarcon , only : vmax_plant_nh4, vmax_plant_no3, vmax_plant_p, vmax_minsurf_p_vr
     use pftvarcon , only : km_plant_nh4, km_plant_no3, km_plant_p, km_minsurf_p_vr
     use pftvarcon , only : km_decomp_nh4, km_decomp_no3, km_decomp_p, km_nit, km_den
@@ -188,6 +218,16 @@ contains
     use pftvarcon , only : fnr, act25, kcha, koha, cpha, vcmaxha, jmaxha, tpuha
     use pftvarcon , only : lmrha, vcmaxhd, jmaxhd, tpuhd, lmrse, qe, theta_cj
     use pftvarcon , only : bbbopt, mbbopt, nstor, br_xr, tc_stress, lmrhd
+#if defined(TAM)
+    !TAM: 21 new in total (Bin Wang, 2025/01)
+    use pftvarcon , only : froott_leaf, froota_leaf, frootm_leaf
+    use pftvarcon,  only : froottcn, frootacn, frootmcn, froottcp, frootacp, frootmcp
+    use pftvarcon , only : frt_flab, frt_fcel, frt_flig, fra_flab, fra_fcel, fra_flig, frm_flab, frm_fcel, frm_flig
+    use pftvarcon , only : froott_long, froota_long, frootm_long
+#else
+    use pftvarcon , only : froot_long, fr_flab, fr_fcel, fr_flig
+    use pftvarcon , only : frootcn, frootcp
+#endif
     ! new properties for flexible PFT
     use pftvarcon , only : climatezone, nonvascular, graminoid, iscft,needleleaf, nfixer
     !
@@ -221,7 +261,7 @@ contains
     allocate(this%flnr          (0:numpft))        ; this%flnr         (:)   =spval
     allocate(this%woody         (0:numpft))        ; this%woody        (:)   =spval
     allocate(this%lflitcn       (0:numpft))        ; this%lflitcn      (:)   =spval
-    allocate(this%frootcn       (0:numpft))        ; this%frootcn      (:)   =spval
+    !allocate(this%frootcn       (0:numpft))        ; this%frootcn      (:)   =spval
     allocate(this%livewdcn      (0:numpft))        ; this%livewdcn     (:)   =spval
     allocate(this%deadwdcn      (0:numpft))        ; this%deadwdcn     (:)   =spval
     allocate(this%graincn       (0:numpft))        ; this%graincn      (:)   =spval
@@ -233,11 +273,41 @@ contains
     allocate(this%lf_flab       (0:numpft))        ; this%lf_flab      (:)   =spval
     allocate(this%lf_fcel       (0:numpft))        ; this%lf_fcel      (:)   =spval
     allocate(this%lf_flig       (0:numpft))        ; this%lf_flig      (:)   =spval
+#if defined(TAM)
+    allocate(this%froottcn      (0:numpft))        ; this%froottcn      (:)   =spval
+    allocate(this%frootacn      (0:numpft))        ; this%frootacn      (:)   =spval
+    allocate(this%frootmcn      (0:numpft))        ; this%frootmcn      (:)   =spval
+    allocate(this%froott_leaf   (0:numpft))        ; this%froott_leaf  (:)   =spval
+    allocate(this%froota_leaf   (0:numpft))        ; this%froota_leaf  (:)   =spval
+    allocate(this%frootm_leaf   (0:numpft))        ; this%frootm_leaf  (:)   =spval
+    allocate(this%frt_flab       (0:numpft))        ; this%frt_flab      (:)   =spval
+    allocate(this%frt_fcel       (0:numpft))        ; this%frt_fcel      (:)   =spval
+    allocate(this%frt_flig       (0:numpft))        ; this%frt_flig      (:)   =spval
+    allocate(this%fra_flab       (0:numpft))        ; this%fra_flab      (:)   =spval
+    allocate(this%fra_fcel       (0:numpft))        ; this%fra_fcel      (:)   =spval
+    allocate(this%fra_flig       (0:numpft))        ; this%fra_flig      (:)   =spval
+    allocate(this%frm_flab       (0:numpft))        ; this%frm_flab      (:)   =spval
+    allocate(this%frm_fcel       (0:numpft))        ; this%frm_fcel      (:)   =spval
+    allocate(this%frm_flig       (0:numpft))        ; this%frm_flig      (:)   =spval
+    allocate(this%froott_long    (0:numpft))        ; this%froott_long   (:)   =spval
+    allocate(this%froota_long    (0:numpft))        ; this%froota_long   (:)   =spval
+    allocate(this%frootm_long    (0:numpft))        ; this%frootm_long   (:)   =spval
+    allocate(this%froottcp       (0:numpft))        ; this%froottcp      (:)   =spval
+    allocate(this%frootacp       (0:numpft))        ; this%frootacp      (:)   =spval
+    allocate(this%frootmcp       (0:numpft))        ; this%frootmcp      (:)   =spval
+#else
+    allocate(this%frootcn       (0:numpft))        ; this%frootcn      (:)   =spval
     allocate(this%fr_flab       (0:numpft))        ; this%fr_flab      (:)   =spval
     allocate(this%fr_fcel       (0:numpft))        ; this%fr_fcel      (:)   =spval
     allocate(this%fr_flig       (0:numpft))        ; this%fr_flig      (:)   =spval
-    allocate(this%leaf_long     (0:numpft))        ; this%leaf_long    (:)   =spval
     allocate(this%froot_long    (0:numpft))        ; this%froot_long   (:)   =spval
+    allocate(this%frootcp       (0:numpft))        ; this%frootcp      (:)   =spval
+#endif
+    !allocate(this%fr_flab       (0:numpft))        ; this%fr_flab      (:)   =spval
+    !allocate(this%fr_fcel       (0:numpft))        ; this%fr_fcel      (:)   =spval
+    !allocate(this%fr_flig       (0:numpft))        ; this%fr_flig      (:)   =spval
+    allocate(this%leaf_long     (0:numpft))        ; this%leaf_long    (:)   =spval
+    !allocate(this%froot_long    (0:numpft))        ; this%froot_long   (:)   =spval
     allocate(this%evergreen     (0:numpft))        ; this%evergreen    (:)   =spval
     allocate(this%stress_decid  (0:numpft))        ; this%stress_decid (:)   =spval
     allocate(this%season_decid  (0:numpft))        ; this%season_decid (:)   =spval
@@ -256,7 +326,7 @@ contains
 
     allocate(this%leafcp        (0:numpft))        ; this%leafcp       (:)   =spval
     allocate(this%lflitcp       (0:numpft))        ; this%lflitcp      (:)   =spval
-    allocate(this%frootcp       (0:numpft))        ; this%frootcp      (:)   =spval
+    !allocate(this%frootcp       (0:numpft))        ; this%frootcp      (:)   =spval
     allocate(this%livewdcp      (0:numpft))        ; this%livewdcp     (:)   =spval
     allocate(this%deadwdcp      (0:numpft))        ; this%deadwdcp     (:)   =spval
     allocate(this%graincp       (0:numpft))        ; this%graincp      (:)   =spval
@@ -353,11 +423,45 @@ contains
        this%fnitr(m)        = fnitr(m)
        this%woody(m)        = woody(m)
        this%lflitcn(m)      = lflitcn(m)
-       this%frootcn(m)      = frootcn(m)
+       !this%frootcn(m)      = frootcn(m)
        this%livewdcn(m)     = livewdcn(m)
        this%deadwdcn(m)     = deadwdcn(m)
        this%graincn(m)      = graincn(m)
        this%froot_leaf(m)   = froot_leaf(m)
+#if defined(TAM)
+       !TAM-induced 21 variables:
+       !froott_leaf, froota_leaf, frootm_leaf, froottcn, frootacn, frootmcn, froottcp, frootacp, frootmcp
+       !frt_flab, frt_fcel, frt_flig, fra_flab, fra_fcel, fra_flig, frm_flab, frm_fcel, frm_flig
+       !froott_long, froota_long, frootm_long
+       this%froott_leaf(m)     = froott_leaf(m)
+       this%froota_leaf(m)     = froota_leaf(m)
+       this%frootm_leaf(m)     = frootm_leaf(m)
+       this%froottcn(m)        = froottcn(m)
+       this%frootacn(m)        = frootacn(m)
+       this%frootmcn(m)        = frootmcn(m)
+       this%froottcp(m)        = froottcp(m)
+       this%frootacp(m)        = frootacp(m)
+       this%frootmcp(m)        = frootmcp(m)
+       this%frt_flab(m)        = frt_flab(m)
+       this%frt_fcel(m)        = frt_fcel(m)
+       this%frt_flig(m)        = frt_flig(m)
+       this%fra_flab(m)        = fra_flab(m)
+       this%fra_fcel(m)        = fra_fcel(m)
+       this%fra_flig(m)        = fra_flig(m)
+       this%frm_flab(m)        = frm_flab(m)
+       this%frm_fcel(m)        = frm_fcel(m)
+       this%frm_flig(m)        = frm_flig(m)
+       this%froott_long(m)     = froott_long(m)
+       this%froota_long(m)     = froota_long(m)
+       this%frootm_long(m)     = frootm_long(m)
+#else
+      this%frootcn(m)      = frootcn(m)
+      this%frootcp(m)      = frootcp(m)
+      this%froot_long(m)   = froot_long(m)
+      this%fr_flab(m)      = fr_flab(m)
+      this%fr_fcel(m)      = fr_fcel(m)
+      this%fr_flig(m)      = fr_flig(m)
+#endif
        this%stem_leaf(m)    = stem_leaf(m)
        this%croot_stem(m)   = croot_stem(m)
        this%flivewd(m)      = flivewd(m)
@@ -365,11 +469,11 @@ contains
        this%lf_flab(m)      = lf_flab(m)
        this%lf_fcel(m)      = lf_fcel(m)
        this%lf_flig(m)      = lf_flig(m)
-       this%fr_flab(m)      = fr_flab(m)
-       this%fr_fcel(m)      = fr_fcel(m)
-       this%fr_flig(m)      = fr_flig(m)
+       !this%fr_flab(m)      = fr_flab(m)
+       !this%fr_fcel(m)      = fr_fcel(m)
+       !this%fr_flig(m)      = fr_flig(m)
        this%leaf_long(m)    = leaf_long(m)
-       this%froot_long(m)   = froot_long(m)
+       !this%froot_long(m)   = froot_long(m)
        this%evergreen(m)    = evergreen(m)
        this%stress_decid(m) = stress_decid(m)
        this%season_decid(m) = season_decid(m)
@@ -386,7 +490,7 @@ contains
 
        this%leafcp(m)       = leafcp(m)
        this%lflitcp(m)      = lflitcp(m)
-       this%frootcp(m)      = frootcp(m)
+       !this%frootcp(m)      = frootcp(m)
        this%livewdcp(m)     = livewdcp(m)
        this%deadwdcp(m)     = deadwdcp(m)
        this%graincp(m)      = graincp(m)
@@ -444,13 +548,19 @@ contains
 
         if (nu_com .ne. 'RD') then ! use new stoichiometry for eca and mic competition
            this%leafcn(m)     = leafcn_obs(m)
-           this%frootcn(m)    = frootcn_obs(m)
+           !this%frootcn(m)    = frootcn_obs(m)
            this%livewdcn(m)   = livewdcn_obs(m)
            this%deadwdcn(m)   = deadwdcn_obs(m)
            this%leafcp(m)     = leafcp_obs(m)
-           this%frootcp(m)    = frootcp_obs(m)
+           !this%frootcp(m)    = frootcp_obs(m)
            this%livewdcp(m)   = livewdcp_obs(m)
            this%deadwdcp(m)   = deadwdcp_obs(m)
+#if defined(TAM)
+            !Left off for later development
+#else
+            this%frootcn(m)    = frootcn_obs(m)
+            this%frootcp(m)    = frootcp_obs(m)
+#endif
         end if
     end do
 

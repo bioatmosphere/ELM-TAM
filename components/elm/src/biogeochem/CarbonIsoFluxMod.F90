@@ -86,12 +86,44 @@ contains
            isoveg_cf%leafc_xfer_to_leafc           , veg_cf%leafc_xfer_to_leafc, &
            isoveg_cs%leafc_xfer                   , veg_cs%leafc_xfer, &
            num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
+#if defined(TAM)
 
+#else
       call CarbonIsoFluxCalc(&
            isoveg_cf%frootc_xfer_to_frootc         , veg_cf%frootc_xfer_to_frootc, &
            isoveg_cs%frootc_xfer                  , veg_cs%frootc_xfer, &
            num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
 
+      call CarbonIsoFluxCalc(&
+           isoveg_cf%frootc_to_litter              , veg_cf%frootc_to_litter, &
+           isoveg_cs%frootc                       , veg_cs%frootc, &
+           num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
+
+      call CarbonIsoFluxCalc(&
+           isoveg_cf%froot_curmr                   , veg_cf%froot_curmr, &
+           isoveg_cs%cpool                        , veg_cs%cpool, &
+           num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
+
+      call CarbonIsoFluxCalc(&
+           isoveg_cf%cpool_to_frootc               , veg_cf%cpool_to_frootc, &
+           isoveg_cs%cpool                        , veg_cs%cpool, &
+           num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
+
+      call CarbonIsoFluxCalc(&
+           isoveg_cf%froot_xsmr                    , veg_cf%froot_xsmr, &
+           isoveg_cs%totvegc                      , veg_cs%totvegc, &
+           num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
+
+      call CarbonIsoFluxCalc(&
+           isoveg_cf%cpool_froot_gr                , veg_cf%cpool_froot_gr, &
+           isoveg_cs%cpool                        , veg_cs%cpool, &
+           num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
+
+      call CarbonIsoFluxCalc(&
+           isoveg_cf%transfer_froot_gr             , veg_cf%transfer_froot_gr, &
+           isoveg_cs%gresp_xfer                   , veg_cs%gresp_xfer, &
+           num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
+#endif
       call CarbonIsoFluxCalc(&
            isoveg_cf%livestemc_xfer_to_livestemc   , veg_cf%livestemc_xfer_to_livestemc, &
            isoveg_cs%livestemc_xfer               , veg_cs%livestemc_xfer, &
@@ -117,10 +149,6 @@ contains
            isoveg_cs%leafc                        , veg_cs%leafc, &
            num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
 
-      call CarbonIsoFluxCalc(&
-           isoveg_cf%frootc_to_litter              , veg_cf%frootc_to_litter, &
-           isoveg_cs%frootc                       , veg_cs%frootc, &
-           num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
 
       call CarbonIsoFluxCalc(&
            isoveg_cf%livestemc_to_deadstemc        , veg_cf%livestemc_to_deadstemc, &
@@ -137,10 +165,6 @@ contains
            isoveg_cs%cpool                        , veg_cs%cpool, &
            num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
 
-      call CarbonIsoFluxCalc(&
-           isoveg_cf%froot_curmr                   , veg_cf%froot_curmr, &
-           isoveg_cs%cpool                        , veg_cs%cpool, &
-           num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
 
       call CarbonIsoFluxCalc(&
            isoveg_cf%livestem_curmr                , veg_cf%livestem_curmr, &
@@ -162,10 +186,6 @@ contains
            isoveg_cs%totvegc                      , veg_cs%totvegc, &
            num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
 
-      call CarbonIsoFluxCalc(&
-           isoveg_cf%froot_xsmr                    , veg_cf%froot_xsmr, &
-           isoveg_cs%totvegc                      , veg_cs%totvegc, &
-           num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
 
       call CarbonIsoFluxCalc(&
            isoveg_cf%livestem_xsmr                 , veg_cf%livestem_xsmr, &
@@ -192,10 +212,6 @@ contains
            isoveg_cs%cpool                        , veg_cs%cpool, &
            num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
 
-      call CarbonIsoFluxCalc(&
-           isoveg_cf%cpool_to_frootc               , veg_cf%cpool_to_frootc, &
-           isoveg_cs%cpool                        , veg_cs%cpool, &
-           num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
 
       call CarbonIsoFluxCalc(&
            isoveg_cf%cpool_to_frootc_storage       , veg_cf%cpool_to_frootc_storage, &
@@ -247,10 +263,6 @@ contains
            isoveg_cs%cpool                        , veg_cs%cpool, &
            num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
 
-      call CarbonIsoFluxCalc(&
-           isoveg_cf%cpool_froot_gr                , veg_cf%cpool_froot_gr, &
-           isoveg_cs%cpool                        , veg_cs%cpool, &
-           num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
 
       call CarbonIsoFluxCalc(&
            isoveg_cf%cpool_livestem_gr             , veg_cf%cpool_livestem_gr, &
@@ -309,11 +321,6 @@ contains
 
       call CarbonIsoFluxCalc(&
            isoveg_cf%transfer_leaf_gr              , veg_cf%transfer_leaf_gr, &
-           isoveg_cs%gresp_xfer                   , veg_cs%gresp_xfer, &
-           num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
-
-      call CarbonIsoFluxCalc(&
-           isoveg_cf%transfer_froot_gr             , veg_cf%transfer_froot_gr, &
            isoveg_cs%gresp_xfer                   , veg_cs%gresp_xfer, &
            num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
 
@@ -460,12 +467,14 @@ contains
          isoveg_cf%m_leafc_xfer_to_litter               , veg_cf%m_leafc_xfer_to_litter, &
          isoveg_cs%leafc_xfer                          , veg_cs%leafc_xfer, &
          num_soilp                                                   , filter_soilp, 1._r8, 0, isotope)
+#if defined(TAM)
 
+#else
     call CarbonIsoFluxCalc(&
          isoveg_cf%m_frootc_to_litter                   , veg_cf%m_frootc_to_litter, &
          isoveg_cs%frootc                              , veg_cs%frootc, &
          num_soilp                                                   , filter_soilp, 1._r8, 0, isotope)
-
+#endif
     call CarbonIsoFluxCalc(&
          isoveg_cf%m_frootc_storage_to_litter           , veg_cf%m_frootc_storage_to_litter, &
          isoveg_cs%frootc_storage                      , veg_cs%frootc_storage, &
@@ -596,12 +605,14 @@ contains
          isoveg_cf%hrv_leafc_xfer_to_litter             , veg_cf%hrv_leafc_xfer_to_litter, &
          isoveg_cs%leafc_xfer                          , veg_cs%leafc_xfer, &
          num_soilp                                                   , filter_soilp, 1._r8, 0, isotope)
+#if defined(TAM)
 
+#else
     call CarbonIsoFluxCalc(&
          isoveg_cf%hrv_frootc_to_litter                 , veg_cf%hrv_frootc_to_litter, &
          isoveg_cs%frootc                              , veg_cs%frootc, &
          num_soilp                                                   , filter_soilp, 1._r8, 0, isotope)
-
+#endif
     call CarbonIsoFluxCalc(&
          isoveg_cf%hrv_frootc_storage_to_litter         , veg_cf%hrv_frootc_storage_to_litter, &
          isoveg_cs%frootc_storage                      , veg_cs%frootc_storage, &
@@ -751,12 +762,14 @@ contains
            isoveg_cf%m_leafc_xfer_to_fire         , veg_cf%m_leafc_xfer_to_fire, &
            isoveg_cs%leafc_xfer                  , veg_cs%leafc_xfer, &
            num_soilp                                           , filter_soilp, 1._r8, 0, isotope)
+#if defined(TAM)
 
+#else
       call CarbonIsoFluxCalc(&
            isoveg_cf%m_frootc_to_fire             , veg_cf%m_frootc_to_fire, &
            isoveg_cs%frootc                      , veg_cs%frootc, &
            num_soilp                                           , filter_soilp, 1._r8, 0, isotope)
-
+#endif
       call CarbonIsoFluxCalc(&
            isoveg_cf%m_frootc_storage_to_fire     , veg_cf%m_frootc_storage_to_fire, &
            isoveg_cs%frootc_storage              , veg_cs%frootc_storage, &
@@ -931,15 +944,24 @@ contains
          lf_flab                   =>    veg_vp%lf_flab                            , & ! Input:  [real(r8) (:)   ]  leaf litter labile fraction
          lf_fcel                   =>    veg_vp%lf_fcel                            , & ! Input:  [real(r8) (:)   ]  leaf litter cellulose fraction
          lf_flig                   =>    veg_vp%lf_flig                            , & ! Input:  [real(r8) (:)   ]  leaf litter lignin fraction
+#if defined(TAM)
+
+#else
          fr_flab                   =>    veg_vp%fr_flab                            , & ! Input:  [real(r8) (:)   ]  fine root litter labile fraction
          fr_fcel                   =>    veg_vp%fr_fcel                            , & ! Input:  [real(r8) (:)   ]  fine root litter cellulose fraction
          fr_flig                   =>    veg_vp%fr_flig                            , & ! Input:  [real(r8) (:)   ]  fine root litter lignin fraction
+         froot_prof                =>    cnstate_vars%froot_prof_patch                 , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of fine roots
+         frootc_to_litter          =>    veg_cf%frootc_to_litter        , & ! Input:  [real(r8) (:)   ]
+#endif
+         !fr_flab                   =>    veg_vp%fr_flab                            , & ! Input:  [real(r8) (:)   ]  fine root litter labile fraction
+         !fr_fcel                   =>    veg_vp%fr_fcel                            , & ! Input:  [real(r8) (:)   ]  fine root litter cellulose fraction
+         !fr_flig                   =>    veg_vp%fr_flig                            , & ! Input:  [real(r8) (:)   ]  fine root litter lignin fraction
 
          leaf_prof                 =>    cnstate_vars%leaf_prof_patch                  , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of leaves
-         froot_prof                =>    cnstate_vars%froot_prof_patch                 , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of fine roots
+         !froot_prof                =>    cnstate_vars%froot_prof_patch                 , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of fine roots
 
          leafc_to_litter           =>    veg_cf%leafc_to_litter         , & ! Input:  [real(r8) (:)   ]
-         frootc_to_litter          =>    veg_cf%frootc_to_litter        , & ! Input:  [real(r8) (:)   ]
+         !frootc_to_litter          =>    veg_cf%frootc_to_litter        , & ! Input:  [real(r8) (:)   ]
          phenology_c_to_litr_met_c =>    col_cf%phenology_c_to_litr_met_c , & ! InOut:  [real(r8) (:,:) ]  C fluxes associated with phenology (litterfall and crop) to litter metabolic pool (gC/m3/s)
          phenology_c_to_litr_cel_c =>    col_cf%phenology_c_to_litr_cel_c , & ! InOut:  [real(r8) (:,:) ]  C fluxes associated with phenology (litterfall and crop) to litter cellulose pool (gC/m3/s)
          phenology_c_to_litr_lig_c =>    col_cf%phenology_c_to_litr_lig_c   & ! InOut:  [real(r8) (:,:) ]  C fluxes associated with phenology (litterfall and crop) to litter lignin pool (gC/m3/s)
@@ -962,12 +984,16 @@ contains
                           + leafc_to_litter(p) * lf_flig(ivt(p)) * wtcol(p) * leaf_prof(p,j)
 
                      ! fine root litter carbon fluxes
+#if defined(TAM)
+
+#else
                      phenology_c_to_litr_met_c(c,j) = phenology_c_to_litr_met_c(c,j) &
                           + frootc_to_litter(p) * fr_flab(ivt(p)) * wtcol(p) * froot_prof(p,j)
                      phenology_c_to_litr_cel_c(c,j) = phenology_c_to_litr_cel_c(c,j) &
                           + frootc_to_litter(p) * fr_fcel(ivt(p)) * wtcol(p) * froot_prof(p,j)
                      phenology_c_to_litr_lig_c(c,j) = phenology_c_to_litr_lig_c(c,j) &
                           + frootc_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * froot_prof(p,j)
+#endif
                   end if
                end if
 
@@ -1007,17 +1033,25 @@ contains
           lf_flab                        =>    veg_vp%lf_flab                                   , & ! Input:  [real(r8) (:)   ]  leaf litter labile fraction
           lf_fcel                        =>    veg_vp%lf_fcel                                   , & ! Input:  [real(r8) (:)   ]  leaf litter cellulose fraction
           lf_flig                        =>    veg_vp%lf_flig                                   , & ! Input:  [real(r8) (:)   ]  leaf litter lignin fraction
+          !fr_flab                        =>    veg_vp%fr_flab                                   , & ! Input:  [real(r8) (:)   ]  fine root litter labile fraction
+          !fr_fcel                        =>    veg_vp%fr_fcel                                   , & ! Input:  [real(r8) (:)   ]  fine root litter cellulose fraction
+          !fr_flig                        =>    veg_vp%fr_flig                                   , & ! Input:  [real(r8) (:)   ]  fine root litter lignin fraction
+
+          leaf_prof                      =>    cnstate_vars%leaf_prof_patch                         , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of leaves
+          !froot_prof                     =>    cnstate_vars%froot_prof_patch                        , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of fine roots
+          croot_prof                     =>    cnstate_vars%croot_prof_patch                        , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of coarse roots
+          stem_prof                      =>    cnstate_vars%stem_prof_patch                         , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of stems
+#if defined(TAM)
+
+#else
           fr_flab                        =>    veg_vp%fr_flab                                   , & ! Input:  [real(r8) (:)   ]  fine root litter labile fraction
           fr_fcel                        =>    veg_vp%fr_fcel                                   , & ! Input:  [real(r8) (:)   ]  fine root litter cellulose fraction
           fr_flig                        =>    veg_vp%fr_flig                                   , & ! Input:  [real(r8) (:)   ]  fine root litter lignin fraction
-
-          leaf_prof                      =>    cnstate_vars%leaf_prof_patch                         , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of leaves
           froot_prof                     =>    cnstate_vars%froot_prof_patch                        , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of fine roots
-          croot_prof                     =>    cnstate_vars%croot_prof_patch                        , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of coarse roots
-          stem_prof                      =>    cnstate_vars%stem_prof_patch                         , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of stems
-
-          m_leafc_to_litter              =>    veg_cf%m_leafc_to_litter              , & ! Input:  [real(r8) (:)   ]
           m_frootc_to_litter             =>    veg_cf%m_frootc_to_litter             , & ! Input:  [real(r8) (:)   ]
+#endif
+          m_leafc_to_litter              =>    veg_cf%m_leafc_to_litter              , & ! Input:  [real(r8) (:)   ]
+          !m_frootc_to_litter             =>    veg_cf%m_frootc_to_litter             , & ! Input:  [real(r8) (:)   ]
           m_livestemc_to_litter          =>    veg_cf%m_livestemc_to_litter          , & ! Input:  [real(r8) (:)   ]
           m_deadstemc_to_litter          =>    veg_cf%m_deadstemc_to_litter          , & ! Input:  [real(r8) (:)   ]
           m_livecrootc_to_litter         =>    veg_cf%m_livecrootc_to_litter         , & ! Input:  [real(r8) (:)   ]
@@ -1062,6 +1096,9 @@ contains
                            m_leafc_to_litter(p) * lf_flig(ivt(p)) * wtcol(p) * leaf_prof(p,j)
 
                       ! fine root gap mortality carbon fluxes
+#if defined(TAM)
+
+#else
                       gap_mortality_c_to_litr_met_c(c,j) = gap_mortality_c_to_litr_met_c(c,j) + &
                            m_frootc_to_litter(p) * fr_flab(ivt(p)) * wtcol(p) * froot_prof(p,j)
                       gap_mortality_c_to_litr_cel_c(c,j) = gap_mortality_c_to_litr_cel_c(c,j) + &
@@ -1069,6 +1106,13 @@ contains
                       gap_mortality_c_to_litr_lig_c(c,j) = gap_mortality_c_to_litr_lig_c(c,j) + &
                            m_frootc_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * froot_prof(p,j)
 
+                      !storage
+                      gap_mortality_c_to_litr_met_c(c,j)     = gap_mortality_c_to_litr_met_c(c,j)     + &
+                           m_frootc_storage_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+                      !transfer
+                      gap_mortality_c_to_litr_met_c(c,j)     = gap_mortality_c_to_litr_met_c(c,j)     + &
+                           m_frootc_xfer_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+#endif
                       ! wood gap mortality carbon fluxes
                       gap_mortality_c_to_cwdc(c,j)  = gap_mortality_c_to_cwdc(c,j)  + &
                            m_livestemc_to_litter(p)  * wtcol(p) * stem_prof(p,j)
@@ -1082,8 +1126,8 @@ contains
                       ! storage gap mortality carbon fluxes
                       gap_mortality_c_to_litr_met_c(c,j)      = gap_mortality_c_to_litr_met_c(c,j)      + &
                            m_leafc_storage_to_litter(p)      * wtcol(p) * leaf_prof(p,j)
-                      gap_mortality_c_to_litr_met_c(c,j)     = gap_mortality_c_to_litr_met_c(c,j)     + &
-                           m_frootc_storage_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+                      !gap_mortality_c_to_litr_met_c(c,j)     = gap_mortality_c_to_litr_met_c(c,j)     + &
+                      !     m_frootc_storage_to_litter(p)     * wtcol(p) * froot_prof(p,j)
                       gap_mortality_c_to_litr_met_c(c,j)  = gap_mortality_c_to_litr_met_c(c,j)  + &
                            m_livestemc_storage_to_litter(p)  * wtcol(p) * stem_prof(p,j)
                       gap_mortality_c_to_litr_met_c(c,j)  = gap_mortality_c_to_litr_met_c(c,j)  + &
@@ -1101,8 +1145,8 @@ contains
                       ! transfer gap mortality carbon fluxes
                       gap_mortality_c_to_litr_met_c(c,j)      = gap_mortality_c_to_litr_met_c(c,j)      + &
                            m_leafc_xfer_to_litter(p)      * wtcol(p) * leaf_prof(p,j)
-                      gap_mortality_c_to_litr_met_c(c,j)     = gap_mortality_c_to_litr_met_c(c,j)     + &
-                           m_frootc_xfer_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+                      !gap_mortality_c_to_litr_met_c(c,j)     = gap_mortality_c_to_litr_met_c(c,j)     + &
+                      !     m_frootc_xfer_to_litter(p)     * wtcol(p) * froot_prof(p,j)
                       gap_mortality_c_to_litr_met_c(c,j)  = gap_mortality_c_to_litr_met_c(c,j)  + &
                            m_livestemc_xfer_to_litter(p)  * wtcol(p) * stem_prof(p,j)
                       gap_mortality_c_to_litr_met_c(c,j)  = gap_mortality_c_to_litr_met_c(c,j)  + &
@@ -1155,17 +1199,25 @@ contains
           lf_flab                          =>    veg_vp%lf_flab                                     , & ! Input:  [real(r8) (:)   ]  leaf litter labile fraction
           lf_fcel                          =>    veg_vp%lf_fcel                                     , & ! Input:  [real(r8) (:)   ]  leaf litter cellulose fraction
           lf_flig                          =>    veg_vp%lf_flig                                     , & ! Input:  [real(r8) (:)   ]  leaf litter lignin fraction
+          !fr_flab                          =>    veg_vp%fr_flab                                     , & ! Input:  [real(r8) (:)   ]  fine root litter labile fraction
+          !fr_fcel                          =>    veg_vp%fr_fcel                                     , & ! Input:  [real(r8) (:)   ]  fine root litter cellulose fraction
+          !fr_flig                          =>    veg_vp%fr_flig                                     , & ! Input:  [real(r8) (:)   ]  fine root litter lignin fraction
+
+          leaf_prof                        =>    cnstate_vars%leaf_prof_patch                           , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of leaves
+          !froot_prof                       =>    cnstate_vars%froot_prof_patch                          , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of fine roots
+          croot_prof                       =>    cnstate_vars%croot_prof_patch                          , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of coarse roots
+          stem_prof                        =>    cnstate_vars%stem_prof_patch                           , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of stems
+#if defined(TAM)
+
+#else
           fr_flab                          =>    veg_vp%fr_flab                                     , & ! Input:  [real(r8) (:)   ]  fine root litter labile fraction
           fr_fcel                          =>    veg_vp%fr_fcel                                     , & ! Input:  [real(r8) (:)   ]  fine root litter cellulose fraction
           fr_flig                          =>    veg_vp%fr_flig                                     , & ! Input:  [real(r8) (:)   ]  fine root litter lignin fraction
-
-          leaf_prof                        =>    cnstate_vars%leaf_prof_patch                           , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of leaves
           froot_prof                       =>    cnstate_vars%froot_prof_patch                          , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of fine roots
-          croot_prof                       =>    cnstate_vars%croot_prof_patch                          , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of coarse roots
-          stem_prof                        =>    cnstate_vars%stem_prof_patch                           , & ! Input:  [real(r8) (:,:) ]  (1/m) profile of stems
-
-          hrv_leafc_to_litter              =>    veg_cf%hrv_leafc_to_litter              , & ! Input:  [real(r8) (:)   ]
           hrv_frootc_to_litter             =>    veg_cf%hrv_frootc_to_litter             , & ! Input:  [real(r8) (:)   ]
+#endif
+          hrv_leafc_to_litter              =>    veg_cf%hrv_leafc_to_litter              , & ! Input:  [real(r8) (:)   ]
+          !hrv_frootc_to_litter             =>    veg_cf%hrv_frootc_to_litter             , & ! Input:  [real(r8) (:)   ]
           hrv_livestemc_to_litter          =>    veg_cf%hrv_livestemc_to_litter          , & ! Input:  [real(r8) (:)   ]
           phrv_deadstemc_to_prod10c        =>    veg_cf%hrv_deadstemc_to_prod10c         , & ! Input:  [real(r8) (:)   ]
           phrv_deadstemc_to_prod100c       =>    veg_cf%hrv_deadstemc_to_prod100c        , & ! Input:  [real(r8) (:)   ]
@@ -1214,13 +1266,22 @@ contains
                            hrv_leafc_to_litter(p) * lf_flig(ivt(p)) * wtcol(p) * leaf_prof(p,j)
 
                       ! fine root harvest mortality carbon fluxes
+#if defined(TAM)
+
+#else
                       harvest_c_to_litr_met_c(c,j) = harvest_c_to_litr_met_c(c,j) + &
                            hrv_frootc_to_litter(p) * fr_flab(ivt(p)) * wtcol(p) * froot_prof(p,j)
                       harvest_c_to_litr_cel_c(c,j) = harvest_c_to_litr_cel_c(c,j) + &
                            hrv_frootc_to_litter(p) * fr_fcel(ivt(p)) * wtcol(p) * froot_prof(p,j)
                       harvest_c_to_litr_lig_c(c,j) = harvest_c_to_litr_lig_c(c,j) + &
                            hrv_frootc_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * froot_prof(p,j)
-
+                      !storage
+                      harvest_c_to_litr_met_c(c,j)     = harvest_c_to_litr_met_c(c,j)     + &
+                           hrv_frootc_storage_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+                      ! transfer
+                      harvest_c_to_litr_met_c(c,j)     = harvest_c_to_litr_met_c(c,j)     + &
+                           hrv_frootc_xfer_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+#endif
                       ! wood harvest mortality carbon fluxes
                       harvest_c_to_cwdc(c,j)  = harvest_c_to_cwdc(c,j)  + &
                            hrv_livestemc_to_litter(p)  * wtcol(p) * stem_prof(p,j)
@@ -1232,8 +1293,8 @@ contains
                       ! storage harvest mortality carbon fluxes
                       harvest_c_to_litr_met_c(c,j)      = harvest_c_to_litr_met_c(c,j)      + &
                            hrv_leafc_storage_to_litter(p)      * wtcol(p) * leaf_prof(p,j)
-                      harvest_c_to_litr_met_c(c,j)     = harvest_c_to_litr_met_c(c,j)     + &
-                           hrv_frootc_storage_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+                      !harvest_c_to_litr_met_c(c,j)     = harvest_c_to_litr_met_c(c,j)     + &
+                      !     hrv_frootc_storage_to_litter(p)     * wtcol(p) * froot_prof(p,j)
                       harvest_c_to_litr_met_c(c,j)  = harvest_c_to_litr_met_c(c,j)  + &
                            hrv_livestemc_storage_to_litter(p)  * wtcol(p) * stem_prof(p,j)
                       harvest_c_to_litr_met_c(c,j)  = harvest_c_to_litr_met_c(c,j)  + &
@@ -1251,8 +1312,8 @@ contains
                       ! transfer harvest mortality carbon fluxes
                       harvest_c_to_litr_met_c(c,j)      = harvest_c_to_litr_met_c(c,j)      + &
                            hrv_leafc_xfer_to_litter(p)      * wtcol(p) * leaf_prof(p,j)
-                      harvest_c_to_litr_met_c(c,j)     = harvest_c_to_litr_met_c(c,j)     + &
-                           hrv_frootc_xfer_to_litter(p)     * wtcol(p) * froot_prof(p,j)
+                      !harvest_c_to_litr_met_c(c,j)     = harvest_c_to_litr_met_c(c,j)     + &
+                      !     hrv_frootc_xfer_to_litter(p)     * wtcol(p) * froot_prof(p,j)
                       harvest_c_to_litr_met_c(c,j)  = harvest_c_to_litr_met_c(c,j)  + &
                            hrv_livestemc_xfer_to_litter(p)  * wtcol(p) * stem_prof(p,j)
                       harvest_c_to_litr_met_c(c,j)  = harvest_c_to_litr_met_c(c,j)  + &

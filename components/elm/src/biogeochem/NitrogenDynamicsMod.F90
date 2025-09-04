@@ -634,7 +634,11 @@ contains
          cp_scalar             => cnstate_vars%cp_scalar               , &
          vmax_nfix             => veg_vp%vmax_nfix                 , &
          km_nfix               => veg_vp%km_nfix                   , &
+#if defined(TAM)
+
+#else
          frootc                => veg_cs%frootc        , &
+#endif
          nfix_to_sminn         => col_nf%nfix_to_sminn  , & ! output: [real(r8) (:)]  symbiotic/asymbiotic n fixation to soil mineral n (gn/m2/s)
          nfix_to_plantn        => veg_nf%nfix_to_plantn , &
          nfix_to_ecosysn       => col_nf%nfix_to_ecosysn, &
@@ -664,8 +668,12 @@ contains
                   ! 78% atm * 6.1e-4 mol/L/atm * 28 g/mol * 1e3L/m3 * water content m3/m3 at 10 cm
                   N2_aq = 0.78_r8 * 6.1e-4_r8 *28._r8 *1.e3_r8 * max(h2osoi_vol(c,4),0.01_r8)
                   ! calculate n2 fixation rate for each pft and add it to column total
+#if defined(TAM)
+
+#else
                   nfix_tmp = vmax_nfix(veg_pp%itype(p)) * frootc(p) * cn_scalar(p) *f_nodule * t_scalar(c,1) * &
                              N2_aq/ (N2_aq + km_nfix(veg_pp%itype(p)))
+#endif
                   if (NFIX_PTASE_plant) then
                      nfix_to_sminn(c) = nfix_to_sminn(c) + nfix_tmp  * veg_pp%wtcol(p) * (1._r8-veg_vp%alpha_nfix(veg_pp%itype(p)))
                      nfix_to_plantn(p) = nfix_tmp * veg_vp%alpha_nfix(veg_pp%itype(p))

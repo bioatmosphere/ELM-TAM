@@ -2468,7 +2468,9 @@ contains
     real(r8) :: porosmin               ! minimum aerenchyma porosity (unitless)(= 0.05_r8)
     real(r8) :: wfrac                  ! fraction (by crown area) of plants that are woody
     real(r8) :: poros_tiller 
-
+    !arising from TAM
+    real(r8) :: frootc_temp
+    
     ! These pointers help us swap between big-leaf and fates boundary conditions
     real(r8), pointer :: annavg_agnpp_ptr
     real(r8), pointer :: annavg_bgnpp_ptr
@@ -2508,9 +2510,13 @@ contains
          qflx_tran_veg =>    veg_wf%qflx_tran_veg  , & ! Input:  [real(r8) (:)    ]  vegetation transpiration (mm H2O/s) (+ = to atm)
 
          canopy_cond   =>    energyflux_vars%canopy_cond_patch   , & ! Input:  [real(r8) (:)    ]  tracer conductance for canopy [m/s]
-
+#if defined(TAM)
+         froottc        =>    veg_cs%froottc       , & ! Input:  [real(r8) (:)    ]  (gC/m2) fine root C
+         frootac        =>    veg_cs%frootac       , & ! Input:  [real(r8) (:)    ]  (gC/m2) fine root C
+         frootmc        =>    veg_cs%frootmc       , & ! Input:  [real(r8) (:)    ]  (gC/m2) fine root C
+#else
          frootc        =>    veg_cs%frootc       , & ! Input:  [real(r8) (:)    ]  (gC/m2) fine root C
-
+#endif
          annavg_agnpp  =>    veg_cf%annavg_agnpp  , & ! Input:  [real(r8) (:)    ]  (gC/m2/s) annual average aboveground NPP
          annavg_bgnpp  =>    veg_cf%annavg_bgnpp  , & ! Input:  [real(r8) (:)    ]  (gC/m2/s) annual average belowground NPP
 
@@ -2572,7 +2578,12 @@ contains
                annsum_npp_ptr   => annsum_npp(p)
                annavg_agnpp_ptr => annavg_agnpp(p)
                annavg_bgnpp_ptr => annavg_bgnpp(p)
+#if defined(TAM)
+               frootc_temp = froottc(p) + frootac(p) + frootmc(p)
+               frootc_ptr       = frootc_temp
+#else
                frootc_ptr       => frootc(p)
+#endif
                rootfr_vr(1:nlevsoi) = rootfr(p,1:nlevsoi)
 
             else

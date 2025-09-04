@@ -155,6 +155,63 @@ contains
             end if
 
             ! froot C and N
+#if defined(TAM)
+            !TAM's T
+            if (abs(veg_cs%froottc(p)) < ccrit) then
+               pc = pc + veg_cs%froottc(p)
+               veg_cs%froottc(p) = 0._r8
+               pn = pn + veg_ns%froottn(p)
+               veg_ns%froottn(p) = 0._r8
+               if ( use_c13 ) then
+                  pc13 = pc13 + c13_veg_cs%froottc(p)
+                  c13_veg_cs%froottc(p) = 0._r8
+               endif
+               if ( use_c14 ) then
+                  pc14 = pc14 + c14_veg_cs%froottc(p)
+                  c14_veg_cs%froottc(p) = 0._r8
+               endif
+
+               pp = pp + veg_ps%froottp(p)
+               veg_ps%froottp(p) = 0._r8
+            end if
+            !TAM's A
+            if (abs(veg_cs%frootac(p)) < ccrit) then
+               pc = pc + veg_cs%frootac(p)
+               veg_cs%frootac(p) = 0._r8
+               pn = pn + veg_ns%frootan(p)
+               veg_ns%frootan(p) = 0._r8
+               if ( use_c13 ) then
+                  pc13 = pc13 + c13_veg_cs%frootac(p)
+                  c13_veg_cs%frootac(p) = 0._r8
+               endif
+               if ( use_c14 ) then
+                  pc14 = pc14 + c14_veg_cs%frootac(p)
+                  c14_veg_cs%frootac(p) = 0._r8
+               endif
+
+               pp = pp + veg_ps%frootap(p)
+               veg_ps%frootap(p) = 0._r8
+            end if
+            !TAM's M
+            if (abs(veg_cs%frootmc(p)) < ccrit) then
+               pc = pc + veg_cs%frootmc(p)
+               veg_cs%frootmc(p) = 0._r8
+               pn = pn + veg_ns%frootmn(p)
+               veg_ns%frootmn(p) = 0._r8
+               if ( use_c13 ) then
+                  pc13 = pc13 + c13_veg_cs%frootmc(p)
+                  c13_veg_cs%frootmc(p) = 0._r8
+               endif
+               if ( use_c14 ) then
+                  pc14 = pc14 + c14_veg_cs%frootmc(p)
+                  c14_veg_cs%frootmc(p) = 0._r8
+               endif
+
+               pp = pp + veg_ps%frootmp(p)
+               veg_ps%frootmp(p) = 0._r8
+            end if
+
+#else
             if (abs(veg_cs%frootc(p)) < ccrit) then
                pc = pc + veg_cs%frootc(p)
                veg_cs%frootc(p) = 0._r8
@@ -172,7 +229,7 @@ contains
                pp = pp + veg_ps%frootp(p)
                veg_ps%frootp(p) = 0._r8
             end if
-
+#endif
             ! froot storage C and N
             if (abs(veg_cs%frootc_storage(p)) < ccrit) then
                pc = pc + veg_cs%frootc_storage(p)
