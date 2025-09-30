@@ -384,8 +384,8 @@ contains
             stem_prof_sum = stem_prof_sum + stem_prof(p,j) *  dzsoi_decomp(j)
          end do
 #if defined(TAM)
-         write(iulog, *) 'profile sums: ', froott_prof_sum, froota_prof_sum, frootm_prof_sum, &
-            croot_prof_sum, leaf_prof_sum, stem_prof_sum
+         !write(iulog, *) 'profile sums: ', froott_prof_sum, froota_prof_sum, frootm_prof_sum, &
+         !   croot_prof_sum, leaf_prof_sum, stem_prof_sum
 #else
          if ( ( abs(froot_prof_sum - 1._r8) > delta ) .or.  ( abs(croot_prof_sum - 1._r8) > delta ) .or. &
               ( abs(stem_prof_sum - 1._r8) > delta ) .or.  ( abs(leaf_prof_sum - 1._r8) > delta ) ) then

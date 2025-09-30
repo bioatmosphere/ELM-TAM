@@ -2469,7 +2469,7 @@ contains
     real(r8) :: wfrac                  ! fraction (by crown area) of plants that are woody
     real(r8) :: poros_tiller 
     !arising from TAM
-    real(r8) :: frootc_temp
+    real(r8), target :: frootc_temp
     
     ! These pointers help us swap between big-leaf and fates boundary conditions
     real(r8), pointer :: annavg_agnpp_ptr
@@ -2580,7 +2580,7 @@ contains
                annavg_bgnpp_ptr => annavg_bgnpp(p)
 #if defined(TAM)
                frootc_temp = froottc(p) + frootac(p) + frootmc(p)
-               frootc_ptr       = frootc_temp
+               frootc_ptr       => frootc_temp
 #else
                frootc_ptr       => frootc(p)
 #endif
