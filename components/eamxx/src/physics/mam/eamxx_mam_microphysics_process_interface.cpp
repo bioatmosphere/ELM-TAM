@@ -1,261 +1,719 @@
+#include <mam4xx/mam4.hpp>
 #include <physics/mam/eamxx_mam_microphysics_process_interface.hpp>
-#include <share/io/scream_scorpio_interface.hpp>
-#include <share/property_checks/field_lower_bound_check.hpp>
-#include <share/property_checks/field_within_interval_check.hpp>
+// impl namespace for some driver level functions for microphysics
 
-#include "scream_config.h" // for SCREAM_CIME_BUILD
+#include "physics/rrtmgp/shr_orb_mod_c2f.hpp"
+#include "readfiles/find_season_index_utils.hpp"
+#include "readfiles/photo_table_utils.cpp"
+#include "physics/mam/readfiles/vertical_remapper_mam4.hpp"
+#include "physics/mam/readfiles/vertical_remapper_exo_coldens.hpp"
+#include "share/algorithm/eamxx_data_interpolation.hpp"
 
-#include <netcdf.h> // for serial NetCDF file reads on MPI root
-#include <ekat/ekat_assert.hpp>
-
-// NOTE: see the impl/ directory for the contents of the impl namespace
-#include "impl/compute_o3_column_density.cpp"
-#include "impl/compute_water_content.cpp"
-#include "impl/gas_phase_chemistry.cpp"
-
+#include <ekat_team_policy_utils.hpp>
 namespace scream
 {
 
-MAMMicrophysics::MAMMicrophysics(
-    const ekat::Comm& comm,
-    const ekat::ParameterList& params)
-  : AtmosphereProcess(comm, params),
-    aero_config_() {
-  configure(params);
-}
-
-AtmosphereProcessType MAMMicrophysics::type() const {
-  return AtmosphereProcessType::Physics;
-}
-
-std::string MAMMicrophysics::name() const {
-  return "mam4_micro";
-}
-
-namespace {
-
-void set_data_file(const char *name, const char *path, char location[MAX_FILENAME_LEN]) {
-  EKAT_REQUIRE_MSG(strlen(SCREAM_DATA_DIR) + strlen(path) < MAX_FILENAME_LEN,
-    "Error! " << name << " path is too long (must be < " << MAX_FILENAME_LEN << " characters)");
-  sprintf(location, "%s/%s", SCREAM_DATA_DIR, path);
-}
-
-}
-
-#define set_file_location(data_file, path) set_data_file(#data_file, path, data_file)
-
-void MAMMicrophysics::set_defaults_() {
-  config_.amicphys.do_cond = true;
-  config_.amicphys.do_rename = true;
-  config_.amicphys.do_newnuc = true;
-  config_.amicphys.do_coag = true;
-
-  config_.amicphys.nucleation = {};
-  config_.amicphys.nucleation.dens_so4a_host = 1770.0;
-  config_.amicphys.nucleation.mw_so4a_host = 115.0;
-  config_.amicphys.nucleation.newnuc_method_user_choice = 2;
-  config_.amicphys.nucleation.pbl_nuc_wang2008_user_choice = 1;
-  config_.amicphys.nucleation.adjust_factor_pbl_ratenucl = 1.0;
-  config_.amicphys.nucleation.accom_coef_h2so4 = 1.0;
-  config_.amicphys.nucleation.newnuc_adjust_factor_dnaitdt = 1.0;
+MAMMicrophysics::MAMMicrophysics(const ekat::Comm &comm, const ekat::ParameterList &params)
+ : MAMGenericInterface(comm, params),
+   aero_config_()
+{
+  const int n_so4_monolayers_pcage =
+    m_params.get<int>("mam4_number_so4_monolayers_to_age_carbon_particle",8);
+  EKAT_REQUIRE_MSG(0 <= n_so4_monolayers_pcage,
+                   "Error: mam4_number_so4_monolayers_to_age_carbon_particle " <<
+		   "must be non-negative. Found:" << n_so4_monolayers_pcage << "\n");
+  config_.n_so4_monolayers_pcage = static_cast<unsigned>(n_so4_monolayers_pcage);
+  config_.amicphys.do_cond   = m_params.get<bool>("mam4_do_cond");
+  config_.amicphys.do_rename = m_params.get<bool>("mam4_do_rename");
+  config_.amicphys.do_newnuc = m_params.get<bool>("mam4_do_newnuc");
+  config_.amicphys.do_coag   = m_params.get<bool>("mam4_do_coag");
+  check_fields_intervals_    = m_params.get<bool>("create_fields_interval_checks", false);
 
   // these parameters guide the coupling between parameterizations
   // NOTE: mam4xx was ported with these parameters fixed, so it's probably not
   // NOTE: safe to change these without code modifications.
+
+  // controls treatment of h2so4 condensation in mam_gasaerexch_1subarea
+  //    1 = sequential   calc. of gas-chem prod then condensation loss
+  //    2 = simultaneous calc. of gas-chem prod and  condensation loss
   config_.amicphys.gaexch_h2so4_uptake_optaa = 2;
+
+  // controls treatment of h2so4 concentrationin mam_newnuc_1subarea
+  //    1 = use average value calculated in standard cam5.2.10 and earlier
+  //    2 = use average value calculated in mam_gasaerexch_1subarea
+  //   11 = use average of initial and final values from mam_gasaerexch_1subarea
+  //   12 = use final value from mam_gasaerexch_1subarea
   config_.amicphys.newnuc_h2so4_conc_optaa = 2;
 
-  //===========================================================
-  // default data file locations (relative to SCREAM_DATA_DIR)
-  //===========================================================
+  config_.compute_gas_phase_chemistry =
+    m_params.get<bool>("mam4_do_gas_phase_chemistry", true);
+  config_.compute_aqueous_phase_chemistry =
+    m_params.get<bool>("mam4_do_aqueous_phase_chemistry", true);
 
-  // many of these paths were extracted from
-  // e3smv2/bld/namelist_files/namelist_defaults_eam.xml
+  // LINOZ namelist parameters
+  // Compute LINOZ only for prognostic Ozone (i.e. !use_prescribed_ozone_)
+  config_.linoz.compute = !use_prescribed_ozone_;
 
-  // photolysis
-  set_file_location(config_.photolysis.rsf_file,         "../waccm/phot/RSF_GT200nm_v3.0_c080811.nc");
-  set_file_location(config_.photolysis.xs_long_file,     "../waccm/phot/temp_prs_GT200nm_JPL10_c130206.nc");
-
-  // stratospheric chemistry
-  set_file_location(config_.linoz.chlorine_loading_file, "../cam/chem/trop_mozart/ub/Linoz_Chlorine_Loading_CMIP6_0003-2017_c20171114.nc");
-
-  // dry deposition
-  set_file_location(config_.drydep.srf_file,             "../cam/chem/trop_mam/atmsrf_ne4pg2_200527.nc");
+  if (config_.linoz.compute) {
+    config_.linoz.o3_lbl = m_params.get<int>("mam4_o3_lbl");
+    config_.linoz.o3_tau = m_params.get<double>("mam4_o3_tau");
+    config_.linoz.o3_sfc = m_params.get<double>("mam4_o3_sfc");
+    config_.linoz.psc_T  = m_params.get<double>("mam4_psc_T");
+  }
 }
-
-void MAMMicrophysics::configure(const ekat::ParameterList& params) {
-  set_defaults_();
-  // FIXME: implement "namelist" parsing
-}
-
-void MAMMicrophysics::set_grids(const std::shared_ptr<const GridsManager> grids_manager) {
-  using namespace ekat::units;
-
-  Units nondim = Units::nondimensional();
-  Units n_unit (1/kg,"#/kg");  // number mixing ratios [# / kg air]
-  const auto m2 = pow(m,2);
-  const auto s2 = pow(s,2);
-
-  grid_ = grids_manager->get_grid("Physics");
-  const auto& grid_name = grid_->name();
+// ================================================================
+//  SET_GRIDS
+// ================================================================
+void
+MAMMicrophysics::create_requests()
+{
+  // set grid for all the inputs and outputs
+  // use physics grid
+  grid_                 = m_grids_manager->get_grid("physics");
+  const auto &grid_name = grid_->name();
 
   ncol_ = grid_->get_num_local_dofs();      // number of columns on this rank
   nlev_ = grid_->get_num_vertical_levels(); // number of levels per column
 
+  // create our photolysis rate calculation table
+  const std::string rsf_file     = m_params.get<std::string>("mam4_rsf_file");
+  const std::string xs_long_file = m_params.get<std::string>("mam4_xs_long_file");
+
+  photo_table_ = impl::read_photo_table(rsf_file, xs_long_file);
+  // NOTE: we need photo_table_ before getting len_temporary_views_.
+  len_temporary_views_ = get_len_temporary_views();
+  buffer_.set_len_temporary_views(len_temporary_views_);
+  buffer_.set_num_scratch(num_2d_scratch_);
+
   // get column geometry and locations
-  col_areas_      = grid_->get_geometry_data("area").get_view<const Real*>();
-  col_latitudes_  = grid_->get_geometry_data("lat").get_view<const Real*>();
-  col_longitudes_ = grid_->get_geometry_data("lon").get_view<const Real*>();
+  col_latitudes_ = grid_->get_geometry_data("lat").get_view<const Real *>();
 
   // define the different field layouts that will be used for this process
   using namespace ShortFieldTagsNames;
 
-  // layout for 2D (1d horiz X 1d vertical) variable
-  FieldLayout scalar2d_layout_col{ {COL}, {ncol_} };
+  // Layout for 2D (2d horiz) variable
+  const FieldLayout scalar2d = grid_->get_2d_scalar_layout();
 
-  // layout for 3D (2d horiz X 1d vertical) variables
-  FieldLayout scalar3d_layout_mid{ {COL, LEV}, {ncol_, nlev_} };
+  // Layout for 3D (2d horiz X 1d vertical) variable defined at mid-level and
+  // interfaces
+  const FieldLayout scalar3d_mid = grid_->get_3d_scalar_layout(LEV);
+  const FieldLayout scalar3d_int = grid_->get_3d_scalar_layout(ILEV);
 
-  // define fields needed in mam4xx
+  // For U and V components of wind
+  const FieldLayout vector3d = grid_->get_3d_vector_layout(LEV, 2);
 
-  // atmospheric quantities
-  add_field<Required>("omega", scalar3d_layout_mid, Pa/s, grid_name); // vertical pressure velocity
-  add_field<Required>("T_mid", scalar3d_layout_mid, K, grid_name); // Temperature
-  add_field<Required>("p_mid", scalar3d_layout_mid, Pa, grid_name); // total pressure
-  add_field<Required>("qv", scalar3d_layout_mid, kg/kg, grid_name, "tracers"); // specific humidity
-  add_field<Required>("qi", scalar3d_layout_mid, kg/kg, grid_name, "tracers"); // ice wet mixing ratio
-  add_field<Required>("ni", scalar3d_layout_mid, n_unit, grid_name, "tracers"); // ice number mixing ratio
-  add_field<Required>("pbl_height", scalar2d_layout_col, m, grid_name); // planetary boundary layer height
-  add_field<Required>("pseudo_density", scalar3d_layout_mid, Pa, grid_name); // p_del, hydrostatic pressure
-  add_field<Required>("phis",           scalar2d_layout_col, m2/s2, grid_name);
-  add_field<Required>("cldfrac_tot", scalar3d_layout_mid, nondim, grid_name); // cloud fraction
+  using namespace ekat::units;
+  // --------------------------------------------------------------------------
+  // These variables are "Required" or pure inputs for the process
+  // --------------------------------------------------------------------------
 
-  // droplet activation can alter cloud liquid and number mixing ratios
-  add_field<Updated>("qc", scalar3d_layout_mid, kg/kg, grid_name, "tracers"); // cloud liquid wet mixing ratio
-  add_field<Updated>("nc", scalar3d_layout_mid, n_unit, grid_name, "tracers"); // cloud liquid wet number mixing ratio
+  add_tracers_wet_atm();
+  add_fields_dry_atm();
 
-  // (interstitial) aerosol tracers of interest: mass (q) and number (n) mixing ratios
-  for (int m = 0; m < mam_coupling::num_aero_modes(); ++m) {
-    const char* int_nmr_field_name = mam_coupling::int_aero_nmr_field_name(m);
-    add_field<Updated>(int_nmr_field_name, scalar3d_layout_mid, n_unit, grid_name, "tracers");
-    for (int a = 0; a < mam_coupling::num_aero_species(); ++a) {
-      const char* int_mmr_field_name = mam_coupling::int_aero_mmr_field_name(m, a);
-      if (strlen(int_mmr_field_name) > 0) {
-        add_field<Updated>(int_mmr_field_name, scalar3d_layout_mid, kg/kg, grid_name, "tracers");
-      }
+  // cloud liquid number mixing ratio [1/kg]
+  auto n_unit = 1 / kg; // units of number mixing ratios of tracers
+  add_tracer<Required>("nc", grid_, n_unit);
+
+  constexpr auto m2 = pow(m, 2);
+  constexpr auto s2 = pow(s, 2);
+
+  // Surface geopotential [m2/s2]
+  add_field<Required>("phis", scalar2d, m2 / s2, grid_name);
+
+  // Surface pressure [Pa]
+  add_field<Required>("ps", scalar2d, Pa, grid_name);
+
+  // U and V components of the wind[m/s]
+  add_field<Required>("horiz_winds", vector3d, m / s, grid_name);
+
+  //----------- Variables from microphysics scheme -------------
+  constexpr auto nondim = ekat::units::Units::nondimensional();
+  // Total cloud fraction [fraction]
+  add_field<Required>("cldfrac_liq", scalar3d_mid, nondim, grid_name);
+
+  // Evaporation from stratiform rain [kg/kg/s]
+  add_field<Required>("nevapr", scalar3d_mid, kg / kg / s, grid_name);
+
+  // Stratiform rain production rate [kg/kg/s]
+  add_field<Required>("precip_total_tend", scalar3d_mid, kg / kg / s, grid_name);
+
+  // precipitation liquid mass [kg/m2]
+  add_field<Required>("precip_liq_surf_mass", scalar2d, kg / m2, grid_name);
+
+  // precipitation ice mass [kg/m2]
+  add_field<Required>("precip_ice_surf_mass", scalar2d, kg / m2, grid_name);
+
+  //----------- Variables from other mam4xx processes ------------
+  // Number of modes
+  constexpr int nmodes = mam4::AeroConfig::num_modes();
+
+  // layout for 3D (ncol, nmodes, nlevs)
+  FieldLayout vector3d_mid_nmodes =
+      grid_->get_3d_vector_layout(LEV, nmodes, mam_coupling::num_modes_tag_name());
+
+  // Geometric mean dry diameter for number distribution [m]
+  add_field<Required>("dgnum", vector3d_mid_nmodes, m, grid_name);
+  // Geometric mean wet diameter for number distribution [m]
+  add_field<Required>("dgnumwet", vector3d_mid_nmodes, m, grid_name);
+
+  constexpr auto m3 = pow(m, 3);
+  // Wet density of interstitial aerosol [kg/m3]
+  add_field<Required>("wetdens", vector3d_mid_nmodes, kg / m3, grid_name);
+
+  // For fractional land use
+  const FieldLayout vector2d_class =
+      grid_->get_2d_vector_layout(mam4::mo_drydep::n_land_type, "class");
+
+  // Fractional land use [fraction]
+  add_field<Required>("fraction_landuse", vector2d_class, nondim, grid_name);
+
+  //----------- Variables from the coupler ---------
+  // surface albedo shortwave, direct
+  add_field<Required>("sfc_alb_dir_vis", scalar2d, nondim, grid_name);
+
+  // Surface temperature[K]
+  add_field<Required>("surf_radiative_T", scalar2d, K, grid_name);
+
+  // snow depth land [m]
+  add_field<Required>("snow_depth_land", scalar2d, m, grid_name);
+
+  //----------- Variables from the RRTMGP radiation ---------
+  // Downwelling solar flux at the surface [w/m2]
+  add_field<Required>("SW_flux_dn", scalar3d_int, W / m2, grid_name);
+
+  // ---------------------------------------------------------------------
+  // These variables are "updated" or inputs/outputs for the process
+  // ---------------------------------------------------------------------
+
+  // (interstitial) aerosol tracers of interest: mass (q) and number (n) mixing
+  // ratios
+  // add tracers, e.g., num_a1, soa_a1
+  add_tracers_interstitial_aerosol();
+  // add tracer gases, e.g., O3
+  add_tracers_gases();
+  // add fields e.g., num_c1, soa_c1
+  add_fields_cloudborne_aerosol();
+  //----------- Updated variables from other mam4xx processes ------------
+  // layout for Constituent fluxes
+  FieldLayout vector2d_pcnst = grid_->get_2d_vector_layout(mam4::pcnst, "num_phys_constituents");
+  // Constituent fluxes of species in [kg/m2/s]
+  add_field<Updated>("constituent_fluxes", vector2d_pcnst, kg / m2 / s, grid_name);
+
+  // ---------------------------------------------------------------------
+  // These variables are "computed" or outputs for the process
+  // ---------------------------------------------------------------------
+  // Number of externally forced chemical species
+  constexpr int extcnt = mam4::gas_chemistry::extcnt;
+
+  FieldLayout vector3d_extcnt = grid_->get_3d_vector_layout(LEV, extcnt, "ext_cnt");
+
+  // Register computed fields for external forcing
+  // - extfrc: 3D instantaneous forcing rate [kg/m³/s]
+  add_field<Computed>("mam4_external_forcing", vector3d_extcnt, kg / m3 / s, grid_name);
+
+  // Diagnostic fields for aerosol microphysics
+
+  // Flag to indicate if we want to compute extra diagnostics
+  extra_mam4_aero_microphys_diags_ = m_params.get<bool>("extra_mam4_aero_microphys_diags", false);
+  if (extra_mam4_aero_microphys_diags_) {
+    const FieldLayout vector3d_num_gas_aerosol_constituents = grid_->get_3d_vector_layout(
+        LEV, mam_coupling::gas_pcnst(), "num_gas_aerosol_constituents");
+
+    const FieldLayout vector2d_nmodes = grid_->get_2d_vector_layout(nmodes, "nmodes");
+    const FieldLayout vector2d_gas_pcnst =
+        grid_->get_2d_vector_layout(mam_coupling::gas_pcnst(), "num_gas_aerosol_constituents");
+
+    // Diagnostics: tendencies due to gas phase chemistry [mixed units: kg/kg/s or #/kg/s]
+    add_field<Computed>("mam4_microphysics_tendency_gas_phase_chemistry",
+                        vector3d_num_gas_aerosol_constituents, nondim, grid_name);
+
+    // Diagnostics: tendencies due to aqueous chemistry [mixed units: kg/kg/s or #/kg/s]
+    add_field<Computed>("mam4_microphysics_tendency_aqueous_chemistry",
+                        vector3d_num_gas_aerosol_constituents, nondim, grid_name);
+
+    // Diagnostics: SO4 in-cloud tendencies [mixed units: kg/kg/s or #/kg/s]
+    add_field<Computed>("mam4_microphysics_tendency_aqso4", vector3d_mid_nmodes, nondim, grid_name);
+
+    // Diagnostics: H2SO4 in-cloud tendencies [mixed units: kg/kg/s or #/kg/s]
+    add_field<Computed>("mam4_microphysics_tendency_aqh2so4", vector3d_mid_nmodes, nondim,
+                        grid_name);
+
+    // Register computed diagnostic fields
+    //(NOTE: dqdt_so4_aqueous_chemistry is the vertically reduced field of
+    //"mam4_microphysics_tendency_aqso4")
+    add_field<Computed>("dqdt_so4_aqueous_chemistry", vector2d_nmodes, kg / m2 / s, grid_name);
+    //(NOTE: dqdt_h2so4_uptake is the vertically reduced field of
+    //"mam4_microphysics_tendency_aqh2so4")
+    add_field<Computed>("dqdt_h2so4_uptake", vector2d_nmodes, kg / m2 / s, grid_name);
+
+    // Diagnostics: tendencies due to aerosol microphysics (gas aerosol exchange) [mixed units:
+    // mol/mol/s or #/mol/s]
+    add_field<Computed>("mam4_microphysics_tendency_condensation",
+                        vector3d_num_gas_aerosol_constituents, nondim, grid_name);
+    add_field<Computed>("mam4_microphysics_tendency_renaming",
+                        vector3d_num_gas_aerosol_constituents, nondim, grid_name);
+    add_field<Computed>("mam4_microphysics_tendency_nucleation",
+                        vector3d_num_gas_aerosol_constituents, nondim, grid_name);
+    add_field<Computed>("mam4_microphysics_tendency_coagulation",
+                        vector3d_num_gas_aerosol_constituents, nondim, grid_name);
+    add_field<Computed>("mam4_microphysics_tendency_renaming_cloud_borne",
+                        vector3d_num_gas_aerosol_constituents, nondim, grid_name);
+    constexpr auto cm2 = m * m / 10000;
+    add_field<Computed>("mam4_gas_dry_deposition_flux", vector2d_gas_pcnst, 1 / cm2 / s, grid_name);
+  }
+
+  // Creating a Linoz reader and setting Linoz parameters involves reading data
+  // from a file and configuring the necessary parameters for the Linoz model.
+
+  // names of variables for linoz
+  if (config_.linoz.compute) {
+    var_names_linoz_ = {
+        "o3_clim",  "o3col_clim", "t_clim",      "PmL_clim",
+        "dPmL_dO3", "dPmL_dT",    "dPmL_dO3col", "cariolle_pscs"};
+  }
+  // NOTE: order matches mam4xx:
+  // names of variables in oxid file.
+  var_names_oxi_={"O3", "OH", "NO3", "HO2"};
+  if (config_.linoz.compute) {
+    // The DataInterpolation class uses Field. We save these fields in FM.
+    for(const auto &field_name : var_names_linoz_) {
+      add_field<Computed>(field_name, scalar3d_mid, nondim, grid_name);
+    }
+  }
+  for(const auto &field_name : var_names_oxi_) {
+    // Adding oxid_ to avoid conflicts with gases treated as tracers.
+    add_field<Computed>("oxid_"+field_name, scalar3d_mid, nondim, grid_name);
+  }
+
+  // list of species for elevated emissiones.
+  extfrc_lst_ = {"so2",    "so4_a1", "so4_a2", "pom_a4", "bc_a4",
+                   "num_a1", "num_a2", "num_a4", "soag"};
+  // sectors or variables for each species.
+  elevated_emis_var_names_["so2"]    = {"BB", "ENE_ELEV", "IND_ELEV",
+                                          "contvolc"};
+  elevated_emis_var_names_["so4_a1"] = {"BB", "ENE_ELEV", "IND_ELEV",
+                                          "contvolc"};
+  elevated_emis_var_names_["so4_a2"] = {"contvolc"};
+  elevated_emis_var_names_["pom_a4"] = {"BB"};
+  elevated_emis_var_names_["bc_a4"]  = {"BB"};
+  elevated_emis_var_names_["num_a1"] = {
+        "num_a1_SO4_ELEV_BB", "num_a1_SO4_ELEV_ENE", "num_a1_SO4_ELEV_IND",
+        "num_a1_SO4_ELEV_contvolc"};
+  elevated_emis_var_names_["num_a2"] = {"num_a2_SO4_ELEV_contvolc"};
+  // num_a4
+  // FIXME: why the sectors in this files are num_a1;
+  //  I guess this should be num_a4? Is this a bug in the orginal nc files?
+  elevated_emis_var_names_["num_a4"] = {"num_a1_BC_ELEV_BB",
+                                          "num_a1_POM_ELEV_BB"};
+  elevated_emis_var_names_["soag"] = {"SOAbb_src", "SOAbg_src", "SOAff_src"};
+
+  // Fields for elevated emissions.
+  for(const auto &pair : elevated_emis_var_names_) {
+    const auto &var_name =pair.first;
+    for(const auto &field_name : pair.second) {
+      add_field<Computed>(field_name+"_"+var_name, scalar3d_mid, nondim, grid_name);
     }
   }
 
-  // aerosol-related gases: mass mixing ratios
-  for (int g = 0; g < mam_coupling::num_aero_gases(); ++g) {
-    const char* gas_mmr_field_name = mam_coupling::gas_mmr_field_name(g);
-    add_field<Updated>(gas_mmr_field_name, scalar3d_layout_mid, kg/kg, grid_name, "tracers");
+  {
+    const std::string season_wes_file =
+        m_params.get<std::string>("mam4_season_wes_file");
+    const auto &clat = col_latitudes_;
+    mam_coupling::find_season_index_reader(season_wes_file, clat,
+                                           index_season_lai_);
   }
 
-  // Tracers group -- do we need this in addition to the tracers above? In any
-  // case, this call should be idempotent, so it can't hurt.
-  add_group<Updated>("tracers", grid_name, 1, Bundling::Required);
+}  // set_grids
+
+// ================================================================
+//  REQUEST_BUFFER_SIZE_IN_BYTES
+// ================================================================
+// ON HOST, returns the number of bytes of device memory needed by
+// the above. Buffer type given the number of columns and vertical
+// levels
+size_t MAMMicrophysics::requested_buffer_size_in_bytes() const {
+  return mam_coupling::buffer_size(ncol_, nlev_, num_2d_scratch_,
+                                   len_temporary_views_);
 }
 
-// this checks whether we have the tracers we expect
-void MAMMicrophysics::
-set_computed_group_impl(const FieldGroup& group) {
-  const auto& name = group.m_info->m_group_name;
-  EKAT_REQUIRE_MSG(name=="tracers",
-    "Error! MAM4 expects a 'tracers' field group (got '" << name << "')\n");
-
-  EKAT_REQUIRE_MSG(group.m_info->m_bundled,
-    "Error! MAM4 expects bundled fields for tracers.\n");
-
-  // how many aerosol/gas tracers do we expect?
-  int num_tracers = 2 * (mam_coupling::num_aero_modes() +
-                         mam_coupling::num_aero_tracers()) +
-                    mam_coupling::num_aero_gases();
-  EKAT_REQUIRE_MSG(group.m_info->size() >= num_tracers,
-    "Error! MAM4 requires at least " << num_tracers << " aerosol tracers.");
-}
-
-size_t MAMMicrophysics::requested_buffer_size_in_bytes() const
-{
-  return mam_coupling::buffer_size(ncol_, nlev_);
-}
+// ================================================================
+//  INIT_BUFFERS
+// ================================================================
+// ON HOST, initializeѕ the Buffer type with sufficient memory to
+// store intermediate (dry) quantities on the given number of
+// columns with the given number of vertical levels. Returns the
+// number of bytes allocated.
 
 void MAMMicrophysics::init_buffers(const ATMBufferManager &buffer_manager) {
-  EKAT_REQUIRE_MSG(buffer_manager.allocated_bytes() >= requested_buffer_size_in_bytes(),
-                   "Error! Insufficient buffer size.\n");
+  size_t used_mem =
+      mam_coupling::init_buffer(buffer_manager, ncol_, nlev_, buffer_);
+  EKAT_REQUIRE_MSG(used_mem == requested_buffer_size_in_bytes(),
+                   "Error! Used memory != requested memory for MAMMicrophysics."
+                   " Used memory: "
+                       << std::to_string(used_mem)
+                       << "."
+                          " Requested memory: "
+                       << std::to_string(requested_buffer_size_in_bytes())
+                       << ". \n");
+}
+int MAMMicrophysics::get_len_temporary_views() {
+  const int photo_table_len = get_photo_table_work_len(photo_table_);
+  const int sethet_work_len = mam4::mo_sethet::get_total_work_len_sethet();
+  constexpr int extcnt      = mam4::gas_chemistry::extcnt;
+  constexpr int pcnst              = mam4::pcnst;
+  constexpr int gas_pcnst = mam_coupling::gas_pcnst();
+  constexpr int nmodes = mam4::AeroConfig::num_modes();
+  int work_len              = 0;
+  // work_photo_table_
+  work_len += ncol_ * photo_table_len;
+  // work_set_het_
+  work_len += ncol_ * sethet_work_len;
+  // photo_rates_
+  work_len += ncol_ * nlev_ * mam4::mo_photo::phtcnt;
+  // invariants_
+  work_len += ncol_ * nlev_ * mam4::gas_chemistry::nfs;
+  // extfrc_
+  work_len += ncol_ * nlev_ * extcnt;
+  //state_q_, qqcw_pcnst_
+  work_len += 2*ncol_ * nlev_*pcnst;
+  //qq_, qqcw_, vmr_,vmr0_, vmrcw_
+  work_len += 5 * ncol_ * nlev_*gas_pcnst;
+  // het_rates_
+  work_len += ncol_ * nlev_*gas_pcnst;
+  //   vmr_pregas_ vmr_precld_
+  work_len += 2* ncol_ * nlev_*gas_pcnst;
+  // dqdt_aqso4_, dqdt_aqh2so4_
+  work_len += 2*ncol_ *nlev_*gas_pcnst;
+  // dgncur_awet_, dgncur_a_, wetdens_;
+  work_len += 3*ncol_ *nlev_*nmodes;
+  return work_len;
+}
+void MAMMicrophysics::init_temporary_views() {
+  const int photo_table_len = get_photo_table_work_len(photo_table_);
+  const int sethet_work_len = mam4::mo_sethet::get_total_work_len_sethet();
+  constexpr int extcnt      = mam4::gas_chemistry::extcnt;
+  constexpr int pcnst              = mam4::pcnst;
+  constexpr int gas_pcnst = mam_coupling::gas_pcnst();
+  constexpr int nmodes = mam4::AeroConfig::num_modes();
+  auto work_ptr             = (Real *)buffer_.temporary_views.data();
 
-  size_t used_mem = mam_coupling::init_buffer(buffer_manager, ncol_, nlev_, buffer_);
-  EKAT_REQUIRE_MSG(used_mem==requested_buffer_size_in_bytes(),
-                   "Error! Used memory != requested memory for MAMMicrophysics.");
+  work_photo_table_ = view_2d(work_ptr, ncol_, photo_table_len);
+  work_ptr += ncol_ * photo_table_len;
+  work_set_het_ = view_2d(work_ptr, ncol_, sethet_work_len);
+  work_ptr += ncol_ * sethet_work_len;
+  // here's where we store per-column photolysis rates
+  photo_rates_ = view_3d(work_ptr, ncol_, nlev_, mam4::mo_photo::phtcnt);
+  work_ptr += ncol_ * nlev_ * mam4::mo_photo::phtcnt;
+  invariants_ = view_3d(work_ptr, ncol_, nlev_, mam4::gas_chemistry::nfs);
+  work_ptr += ncol_ * nlev_ * mam4::gas_chemistry::nfs;
+  extfrc_ = view_3d(work_ptr, ncol_, nlev_, extcnt);
+  work_ptr += ncol_ * nlev_ * extcnt;
+  state_q_=view_3d(work_ptr, ncol_, nlev_, pcnst );
+  work_ptr += ncol_ * nlev_*pcnst;
+  qqcw_pcnst_=view_3d(work_ptr, ncol_, nlev_,pcnst );
+  work_ptr += ncol_ * nlev_*pcnst;
+  qq_=view_3d(work_ptr, ncol_, nlev_,gas_pcnst );
+  work_ptr += ncol_ * nlev_*gas_pcnst;
+  qqcw_=view_3d(work_ptr, ncol_, nlev_,gas_pcnst );
+  work_ptr += ncol_ * nlev_*gas_pcnst;
+  vmr_=view_3d(work_ptr, ncol_, nlev_,gas_pcnst );
+  work_ptr += ncol_ * nlev_*gas_pcnst;
+  vmr0_=view_3d(work_ptr, ncol_, nlev_,gas_pcnst );
+  work_ptr += ncol_ * nlev_*gas_pcnst;
+  vmrcw_=view_3d(work_ptr, ncol_, nlev_,gas_pcnst );
+  work_ptr += ncol_ * nlev_*gas_pcnst;
+  het_rates_ = view_3d(work_ptr, ncol_, nlev_, gas_pcnst );
+  work_ptr += ncol_ *nlev_*gas_pcnst;
+
+  vmr_pregas_ = view_3d(work_ptr, ncol_, nlev_,gas_pcnst );
+  work_ptr += ncol_ *nlev_*gas_pcnst;
+  vmr_precld_ =view_3d(work_ptr, ncol_, nlev_,gas_pcnst );
+  work_ptr += ncol_ *nlev_*gas_pcnst;
+
+  dqdt_aqso4_=view_3d(work_ptr, ncol_, nlev_,gas_pcnst );
+  work_ptr += ncol_ *nlev_*gas_pcnst;
+  dqdt_aqh2so4_=view_3d(work_ptr, ncol_, nlev_,gas_pcnst );
+  work_ptr += ncol_ *nlev_*gas_pcnst;
+
+  dgncur_awet_ = view_3d(work_ptr, ncol_, nlev_,nmodes );
+  work_ptr += ncol_ *nlev_*nmodes;
+  dgncur_a_ = view_3d(work_ptr, ncol_, nlev_,nmodes );
+  work_ptr += ncol_ *nlev_*nmodes;
+  wetdens_ = view_3d(work_ptr, ncol_, nlev_,nmodes );
+  work_ptr += ncol_ *nlev_*nmodes;
+
+  // Error check
+  // NOTE: workspace_provided can be larger than workspace_used, but let's try
+  // to use the minimum amount of memory
+  const int workspace_used     = work_ptr - buffer_.temporary_views.data();
+  const int workspace_provided = buffer_.temporary_views.extent(0);
+  EKAT_REQUIRE_MSG(workspace_used == workspace_provided,
+                   "Error: workspace_used (" + std::to_string(workspace_used) +
+                       ") and workspace_provided (" +
+                       std::to_string(workspace_provided) +
+                       ") should be equal. \n");
+}
+// set DataInterpolation object for oxid reader.
+void MAMMicrophysics::set_oxid_reader()
+{
+
+  auto pmid = get_field_in("p_mid");
+  // Oxid fields read initialization
+  const auto oxid_file_name = m_params.get<std::string>("mam4_oxid_file_name");
+  const std::string oxid_map_file =
+        m_params.get<std::string>("aero_microphys_remap_file", "");
+  // get fields from FM.
+  std::vector<Field> oxid_fields;
+  for(const auto &field_name : var_names_oxi_) {
+      oxid_fields.push_back(get_field_out("oxid_"+field_name).alias(field_name));
+  }
+
+  // Beg of any year, since we use yearly periodic timeline
+  util::TimeStamp ref_ts_oxid (1,1,1,0,0,0);
+  data_interp_oxid_ = std::make_shared<DataInterpolation>(grid_,oxid_fields);
+  data_interp_oxid_->setup_time_database ({oxid_file_name},util::TimeLine::YearlyPeriodic, DataInterpolation::Linear, ref_ts_oxid);
+  data_interp_oxid_->create_horiz_remappers (oxid_map_file=="none" ? "" : oxid_map_file);
+  data_interp_oxid_->set_logger(m_atm_logger);
+  DataInterpolation::VertRemapData remap_data_oxid;
+  remap_data_oxid.vr_type = DataInterpolation::Dynamic3DRef;
+  remap_data_oxid.pname = "PS";
+  remap_data_oxid.pmid = pmid;
+  //FIXME: make it a namelist parameter.
+  // Dynamic3DRef can also be employed instead of mam4xx routine.
+  bool mam4_use_mam4xx_oxi_vert_remap=true;
+  if (mam4_use_mam4xx_oxi_vert_remap){
+    // We are using a custom remapper that invokes the MAM4XX routine
+    // for vertical interpolation.
+    // The type used is VertRemapType::MAM4_PSRef.
+    auto grid_after_hremap = data_interp_oxid_->get_grid_after_hremap();
+    auto vertical_remapper= std::make_shared<VerticalRemapperMAM4>(grid_after_hremap, grid_,
+    VerticalRemapperMAM4::VertRemapType::MAM4_PSRef);
+    remap_data_oxid.custom_remapper=vertical_remapper;
+  }
+  data_interp_oxid_->create_vert_remapper (remap_data_oxid);
+  data_interp_oxid_->init_data_interval (start_of_step_ts());
+}
+// set DataInterpolation object for linoz reader.
+void MAMMicrophysics::set_linoz_reader(){
+  auto pmid = get_field_in("p_mid");
+  // Beg of any year, since we use yearly periodic timeline
+  util::TimeStamp ref_ts_linoz (1,1,1,0,0,0);
+  const auto m_linoz_file_name = m_params.get<std::string>("mam4_linoz_file_name");
+  const std::string linoz_map_file =
+        m_params.get<std::string>("aero_microphys_remap_file", "");
+  std::vector<Field> linoz_fields;
+  for(const auto &field_name : var_names_linoz_) {
+      linoz_fields.push_back(get_field_out(field_name));
+  }
+
+  data_interp_linoz_ = std::make_shared<DataInterpolation>(grid_,linoz_fields);
+  data_interp_linoz_->setup_time_database ({m_linoz_file_name},util::TimeLine::YearlyPeriodic, DataInterpolation::Linear, ref_ts_linoz);
+  data_interp_linoz_->create_horiz_remappers (linoz_map_file=="none" ? "" : linoz_map_file);
+  data_interp_linoz_->set_logger(m_atm_logger);
+
+  DataInterpolation::VertRemapData remap_data_linoz;
+  remap_data_linoz.vr_type = DataInterpolation::Static1D;
+  // lev is the name of variables for vertical interpolation
+  remap_data_linoz.pname = "lev";
+  remap_data_linoz.pmid = pmid;
+  // Static1D can also be employed instead of mam4xx routine.
+  bool mam4_use_mam4xx_linoz_vert_remap=true;
+  if (mam4_use_mam4xx_linoz_vert_remap){
+    // We are using a custom remapper that invokes the MAM4XX routine
+    // for vertical interpolation.
+    // The type used is VertRemapType::MAM4_ZONAL.
+    auto grid_after_hremap_linoz = data_interp_linoz_->get_grid_after_hremap();
+    auto vertical_remapper_linoz = std::make_shared<VerticalRemapperMAM4>(grid_after_hremap_linoz, grid_,
+    VerticalRemapperMAM4::VertRemapType::MAM4_ZONAL);
+    remap_data_linoz.custom_remapper=vertical_remapper_linoz;
+  }
+  data_interp_linoz_->create_vert_remapper (remap_data_linoz);
+  data_interp_linoz_->init_data_interval (start_of_step_ts());
+}
+// set DataInterpolation object for elevated emissions reader.
+void MAMMicrophysics::set_exo_coldens_reader()
+{
+  using namespace ekat::units;
+  using namespace ShortFieldTagsNames;
+  const auto pint = get_field_in("p_int");
+  // Exo column density fields read initialization
+  const std::string exo_coldens_file_name = m_params.get<std::string>("mam4_exo_coldens_file_name");
+  const std::string exo_coldens_map_file =
+        m_params.get<std::string>("aero_microphys_remap_file", "");
+  // get fields from FM.
+  auto grid_exo_coldens = grid_->clone("exo_grid",true);
+  grid_exo_coldens->reset_vertical_configuration(1, AbstractGrid::VKind::Model);
+  auto layout = grid_exo_coldens->get_3d_scalar_layout(LEV);
+
+  auto molec = Units::nondimensional();// example;
+  auto cm2 = pow(m / 100,2);
+  auto molec_cm2 = Units(molec/cm2,"molecules/cm2");
+  const std::string exo_coldens_name = "O3_column_density";
+  Field field_exo(
+      FieldIdentifier(exo_coldens_name, layout, molec_cm2, grid_exo_coldens->name()));
+  field_exo.allocate_view();
+  exo_coldens_fields_.push_back(field_exo);
+
+  // Beg of any year, since we use yearly periodic timeline
+  util::TimeStamp ref_ts_exo_coldens (1,1,1,0,0,0);
+  data_interp_exo_coldens_ = std::make_shared<DataInterpolation>(grid_exo_coldens,exo_coldens_fields_);
+  data_interp_exo_coldens_->setup_time_database ({exo_coldens_file_name},util::TimeLine::YearlyPeriodic,DataInterpolation::Linear, ref_ts_exo_coldens);
+  data_interp_exo_coldens_->create_horiz_remappers (exo_coldens_map_file=="none" ? "" : exo_coldens_map_file);
+  data_interp_exo_coldens_->set_logger(m_atm_logger);
+  DataInterpolation::VertRemapData remap_exo_coldens;
+  remap_exo_coldens.vr_type = DataInterpolation::Custom;
+  // We are using a custom remapper that invokes the MAM4XX routine
+  // for vertical interpolation.
+  auto grid_after_hremap = data_interp_exo_coldens_->get_grid_after_hremap();
+  auto vertical_remapper= std::make_shared<VerticalRemapperExoColdensMAM4>(grid_after_hremap, grid_exo_coldens);
+  vertical_remapper->set_delta_pressure(exo_coldens_file_name, pint);
+  remap_exo_coldens.custom_remapper=vertical_remapper;
+
+  data_interp_exo_coldens_->create_vert_remapper (remap_exo_coldens);
+  data_interp_exo_coldens_->init_data_interval (start_of_step_ts());
+
 }
 
-
-void MAMMicrophysics::initialize_impl(const RunType run_type) {
-
-  step_ = 0;
-
-  // populate the wet and dry atmosphere states with views from fields and
-  // the buffer
-  wet_atm_.qv = get_field_in("qv").get_view<const Real**>();
-  wet_atm_.qc = get_field_out("qc").get_view<Real**>();
-  wet_atm_.nc = get_field_out("nc").get_view<Real**>();
-  wet_atm_.qi = get_field_in("qi").get_view<const Real**>();
-  wet_atm_.ni = get_field_in("ni").get_view<const Real**>();
-  
-
-  dry_atm_.T_mid     = get_field_in("T_mid").get_view<const Real**>();
-  dry_atm_.p_mid     = get_field_in("p_mid").get_view<const Real**>();
-  dry_atm_.p_del     = get_field_in("pseudo_density").get_view<const Real**>();
-  dry_atm_.cldfrac   = get_field_in("cldfrac_tot").get_view<const Real**>(); // FIXME: tot or liq?
-  dry_atm_.pblh      = get_field_in("pbl_height").get_view<const Real*>();
-  dry_atm_.phis      = get_field_in("phis").get_view<const Real*>();
-  dry_atm_.omega     = get_field_in("omega").get_view<const Real**>();
-  dry_atm_.z_mid     = buffer_.z_mid;
-  dry_atm_.dz        = buffer_.dz;
-  dry_atm_.z_iface   = buffer_.z_iface;
-  dry_atm_.qv        = buffer_.qv_dry;
-  dry_atm_.qc        = buffer_.qc_dry;
-  dry_atm_.nc        = buffer_.nc_dry;
-  dry_atm_.qi        = buffer_.qi_dry;
-  dry_atm_.ni        = buffer_.ni_dry;
-  dry_atm_.w_updraft = buffer_.w_updraft;
-  dry_atm_.z_surf = 0.0; // FIXME: for now
-
-  // perform any initialization work
-  if (run_type==RunType::Initial) {
-  }
-
-  // set wet/dry aerosol state data (interstitial aerosols only)
-  for (int m = 0; m < mam_coupling::num_aero_modes(); ++m) {
-    const char* int_nmr_field_name = mam_coupling::int_aero_nmr_field_name(m);
-    wet_aero_.int_aero_nmr[m] = get_field_out(int_nmr_field_name).get_view<Real**>();
-    dry_aero_.int_aero_nmr[m] = buffer_.dry_int_aero_nmr[m];
-    for (int a = 0; a < mam_coupling::num_aero_species(); ++a) {
-      const char* int_mmr_field_name = mam_coupling::int_aero_mmr_field_name(m, a);
-      if (strlen(int_mmr_field_name) > 0) {
-        wet_aero_.int_aero_mmr[m][a] = get_field_out(int_mmr_field_name).get_view<Real**>();
-        dry_aero_.int_aero_mmr[m][a] = buffer_.dry_int_aero_mmr[m][a];
-      }
+// set DataInterpolation object for elevated emissions reader.
+void MAMMicrophysics::set_elevated_emissions_reader()
+{
+  const auto z_iface = get_field_out("z_mam4_int");
+  const std::string extfrc_map_file =
+        m_params.get<std::string>("aero_microphys_remap_file", "");
+  for(const auto &pair : elevated_emis_var_names_) {
+    const auto& var_name=pair.first;
+    std::string item_name = "mam4_" + var_name + "_elevated_emiss_file_name";
+    const auto file_name  = m_params.get<std::string>(item_name);
+    // Beg of any year, since we use yearly periodic timeline
+    util::TimeStamp ref_ts_vertical (1,1,1,0,0,0);
+    std::vector<Field> vertical_fields;
+    for(const auto &field_name :pair.second) {
+      vertical_fields.push_back(get_field_out(field_name+"_"+var_name).alias(field_name));
     }
+    std::shared_ptr<DataInterpolation> di_vertical = std::make_shared<DataInterpolation>(grid_,vertical_fields);
+    di_vertical->set_input_files_dimname(ShortFieldTagsNames::LEV,"altitude");
+    di_vertical->set_input_files_dimname(ShortFieldTagsNames::ILEV,"altitude_int");
+    di_vertical->setup_time_database ({file_name},util::TimeLine::YearlyPeriodic, DataInterpolation::Linear, ref_ts_vertical);
+    di_vertical->create_horiz_remappers (extfrc_map_file=="none" ? "" : extfrc_map_file);
+    di_vertical->set_logger(m_atm_logger);
+    DataInterpolation::VertRemapData remap_data_vertical;
+    remap_data_vertical.vr_type = DataInterpolation::Custom;
+    remap_data_vertical.pmid = z_iface;
+    auto grid_after_hremap_vertical = di_vertical->get_grid_after_hremap();
+    // we create elevated emission remapper
+    auto vertical_remapper_elevated = std::make_shared<VerticalRemapperMAM4>(grid_after_hremap_vertical, grid_,
+    VerticalRemapperMAM4::VertRemapType::MAM4_ELEVATED_EMISSIONS);
+    // we set source and target variables for interpolation
+    vertical_remapper_elevated->set_source_pressure(file_name);
+    vertical_remapper_elevated->set_target_pressure(z_iface);
+    remap_data_vertical.custom_remapper=vertical_remapper_elevated;
+    di_vertical->create_vert_remapper (remap_data_vertical);
+    di_vertical->init_data_interval (start_of_step_ts());
+    data_interp_elevated_emissions_.push_back(di_vertical);
+  }//end var_name
+}
+// ================================================================
+//  INITIALIZE_IMPL
+// ================================================================
+void MAMMicrophysics::initialize_impl(const RunType run_type) {
+  // Determine orbital year. If orbital_year is negative, use current year
+  // from timestamp for orbital year; if positive, use provided orbital year
+  // for duration of simulation.
+  // Check the interval values for the following fields used by this interface.
+  // NOTE: We do not include aerosol and gas species, e.g., soa_a1, num_a1,
+  // because we automatically added these fields.
+  const std::map<std::string, std::pair<Real, Real>> ranges_microphysics = {
+      {"SW_flux_dn", {-1e10, 1e10}},            // FIXME
+      {"horiz_winds", {-1e10, 1e10}},           // FIXME
+      {"nevapr", {-1e10, 1e10}},                // FIXME
+      {"precip_ice_surf_mass", {-1e10, 1e10}},  // FIXME
+      {"precip_liq_surf_mass", {-1e10, 1e10}},  // FIXME
+      {"precip_total_tend", {-1e10, 1e10}},     // FIXME
+      {"ps", {-1e10, 1e10}},                    // FIXME
+      {"sfc_alb_dir_vis", {-1e10, 1e10}},       // FIXME
+      {"snow_depth_land", {-1e10, 1e10}},       // FIXME
+      {"surf_radiative_T", {-1e10, 1e10}},      // FIXME
+      {"dqdt_h2so4_uptake", {-1e10, 1e10}}       // FIXME
+  };
+  set_ranges_process(ranges_microphysics);
+  add_interval_checks();
+  m_orbital_year = m_params.get<int>("orbital_year", -9999);
+
+  // Get orbital parameters from yaml file
+  m_orbital_eccen = m_params.get<double>("orbital_eccentricity", -9999);
+  m_orbital_obliq = m_params.get<double>("orbital_obliquity", -9999);
+  m_orbital_mvelp = m_params.get<double>("orbital_mvelp", -9999);
+
+  // ---------------------------------------------------------------
+  // Input fields read in from IC file, namelist or other processes
+  // ---------------------------------------------------------------
+  populate_wet_atm(wet_atm_);
+  populate_dry_atm(dry_atm_, buffer_);
+
+  // FIXME: we are using cldfrac_tot in other mam4xx process.
+  dry_atm_.cldfrac = get_field_in("cldfrac_liq").get_view<const Real **>();
+  // FIXME: phis is not populated by populate_wet_and_dry_atm.
+  dry_atm_.phis = get_field_in("phis").get_view<const Real *>();
+  // get surface albedo: shortwave, direct
+  d_sfc_alb_dir_vis_ = get_field_in("sfc_alb_dir_vis").get_view<const Real *>();
+
+  // interstitial and cloudborne aerosol tracers of interest: mass (q) and
+  // number (n) mixing ratios
+  // It populates wet_aero struct (wet_aero_) with:
+  // interstitial aerosol, e.g., soa_a_1
+  populate_interstitial_wet_aero(wet_aero_);
+  // gases, e.g., O3
+  populate_gases_wet_aero(wet_aero_);
+  // cloudborne aerosol, e.g., soa_c_1
+  populate_cloudborne_wet_aero(wet_aero_);
+  // It populates dry_aero struct (dry_aero_) with:
+  // interstitial aerosol, e.g., soa_a_1
+  populate_interstitial_dry_aero(dry_aero_, buffer_);
+  // gases, e.g., O3
+  populate_gases_dry_aero(dry_aero_, buffer_);
+  // cloudborne aerosol, e.g., soa_c_1
+  populate_cloudborne_dry_aero(dry_aero_, buffer_);
+
+  if (extra_mam4_aero_microphys_diags_) {
+    //Some dignostics fields have mixed units (kg/kg/s, #/kg/s, etc.)
+    //For these fields, we add a docstring to the field to indicate that
+    //the units are mixed and the user should be careful when using these fields.
+    //Following map contains the map of fields with mixed units and their long names.
+    const std::map<std::string, std::string>  mixed_units_fields = {
+      {"mam4_microphysics_tendency_gas_phase_chemistry",
+      "MAM4xx microphysics tendencies due to gas phase chemistry [mixed units: kg/kg/s or #/kg/s]"},
+
+      {"mam4_microphysics_tendency_aqueous_chemistry",
+      "MAM4xx microphysics tendencies due to aqueous chemistry [mixed units: kg/kg/s or #/kg/s]"},
+
+      {"mam4_microphysics_tendency_aqso4",
+      "MAM4xx microphysics tendencies due to aqueous SO4 [mixed units: kg/kg/s or #/kg/s]"},
+
+      {"mam4_microphysics_tendency_aqh2so4",
+      "MAM4xx microphysics tendencies due to aqueous H2SO4 [mixed units: kg/kg/s or #/kg/s]"},
+
+      {"mam4_microphysics_tendency_condensation",
+      "MAM4xx microphysics tendencies due to gas aerosol exchange (condensation) [mixed units: mol/mol/s or #/mol/s]"},
+
+      {"mam4_microphysics_tendency_renaming",
+      "MAM4xx microphysics tendencies due to gas aerosol exchange (renaming) [mixed units: mol/mol/s or #/mol/s]"},
+
+      {"mam4_microphysics_tendency_nucleation",
+      "MAM4xx microphysics tendencies due to gas aerosol exchange (nucleation) [mixed units: mol/mol/s or #/mol/s]"},
+
+      {"mam4_microphysics_tendency_coagulation",
+      "MAM4xx microphysics tendencies due to gas aerosol exchange (coagulation) [mixed units: mol/mol/s or #/mol/s]"},
+
+      {"mam4_microphysics_tendency_renaming_cloud_borne",
+      "MAM4xx microphysics tendencies due to gas aerosol exchange (renaming cloud borne) [mixed units: mol/mol/s or #/mol/s]"},
+
+      {"mam4_gas_dry_deposition_flux",
+      "MAM4xx microphysics deposition flux [units: 1/cm^2/s]"},
+    };
+    // Add docstring to the fields with mixed units
+    add_io_docstring_to_fields_with_mixed_units(mixed_units_fields);
   }
 
-  // set wet/dry aerosol-related gas state data
-  for (int g = 0; g < mam_coupling::num_aero_gases(); ++g) {
-    const char* mmr_field_name = mam_coupling::gas_mmr_field_name(g);
-    wet_aero_.gas_mmr[g] = get_field_out(mmr_field_name).get_view<Real**>();
-    dry_aero_.gas_mmr[g] = buffer_.dry_gas_mmr[g];
-  }
-
-  // create our photolysis rate calculation table
-  photo_table_ = impl::read_photo_table(get_comm(),
-                                        config_.photolysis.rsf_file,
-                                        config_.photolysis.xs_long_file);
-
-  // FIXME: read relevant land use data from drydep surface file
-
-  // set up our preprocess/postprocess functors
-  preprocess_.initialize(ncol_, nlev_, wet_atm_, wet_aero_, dry_atm_, dry_aero_);
-  postprocess_.initialize(ncol_, nlev_, wet_atm_, wet_aero_, dry_atm_, dry_aero_);
 
   // set field property checks for the fields in this process
   /* e.g.
@@ -267,247 +725,164 @@ void MAMMicrophysics::initialize_impl(const RunType run_type) {
   add_postcondition_check<LowerBound>(get_field_out("tke"),m_grid,0);
   */
 
-  // set up WSM for internal local variables
-  // (we'll probably need this later, but we'll just use ATMBufferManager for now)
-  //const auto default_policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(ncol_, nlev_);
-  //workspace_mgr_.setup(buffer_.wsm_data, nlev_+1, 13+(n_wind_slots+n_trac_slots), default_policy);
-}
+  if (config_.linoz.compute) {
+    // climatology data for linear stratospheric chemistry
+    auto ts = start_of_step_ts();
+    std::string linoz_chlorine_file =
+        m_params.get<std::string>("mam4_linoz_chlorine_file");
+    int chlorine_loading_ymd = m_params.get<int>("mam4_chlorine_loading_ymd");
+    scream::mam_coupling::create_linoz_chlorine_reader(
+        linoz_chlorine_file, ts, chlorine_loading_ymd, chlorine_values_,
+        chlorine_time_secs_);
+  }
+  init_temporary_views();
+  cmfdqr_ = view_1d("cmfdqr_", nlev_);
+  set_oxid_reader();
+  if (config_.linoz.compute) {
+    set_linoz_reader();
+  }
 
+  {
+    set_elevated_emissions_reader();
+    for(size_t i = 0; i < extfrc_lst_.size(); ++i) {
+      std::string var_name = extfrc_lst_[i];
+      const auto sector_names = elevated_emis_var_names_[var_name];
+      const int nvars      = static_cast<int>(sector_names.size());
+      forcings_[i].nsectors = nvars;
+      // I am assuming the order of species in extfrc_lst_.
+      // Indexing in mam4xx is fortran.
+      forcings_[i].frc_ndx = i + 1;
+      forcings_[i].file_alt_data = true;
+      for(int isp = 0; isp < nvars; ++isp)
+      {
+        const std::string field_name = sector_names[isp]+"_"+var_name;
+        forcings_[i].fields[isp] = get_field_out(field_name).get_view<Real **>();
+      }//isp
+    } //i
+  }
+  // //
+
+  acos_cosine_zenith_host_ = view_1d_host("host_acos(cosine_zenith)", ncol_);
+  acos_cosine_zenith_      = view_1d("device_acos(cosine_zenith)", ncol_);
+
+  set_exo_coldens_reader();
+}  // initialize_impl
+
+// ================================================================
+//  RUN_IMPL
+// ================================================================
 void MAMMicrophysics::run_impl(const double dt) {
-
-  const auto scan_policy = ekat::ExeSpaceUtils<KT::ExeSpace>::get_thread_range_parallel_scan_team_policy(ncol_, nlev_);
-  const auto policy      = ekat::ExeSpaceUtils<KT::ExeSpace>::get_default_team_policy(ncol_, nlev_);
+  const int ncol = ncol_;
+  const int nlev = nlev_;
 
   // preprocess input -- needs a scan for the calculation of atm height
-  Kokkos::parallel_for("preprocess", scan_policy, preprocess_);
+  pre_process(wet_aero_, dry_aero_, wet_atm_, dry_atm_);
   Kokkos::fence();
+  
+  data_interp_oxid_->run(end_of_step_ts());
+  data_interp_exo_coldens_->run(end_of_step_ts());  
 
-  // reset internal WSM variables
-  //workspace_mgr_.reset_internals();
+  /* Gather time and state information for interpolation */
+  const auto ts = end_of_step_ts();
 
-  // NOTE: nothing depends on simulation time (yet), so we can just use zero for now
-  double t = 0.0;
+  if (config_.linoz.compute) {
+  const Real chlorine_loading = scream::mam_coupling::chlorine_loading_advance(
+      ts, chlorine_values_, chlorine_time_secs_);
+    config_.linoz.chlorine_loading=chlorine_loading;
+    data_interp_linoz_->run(end_of_step_ts());
+  }
 
-  // here's where we store per-column photolysis rates
-  using View2D = haero::DeviceType::view_2d<Real>;
-  View2D photo_rates("photo_rates", nlev_, mam4::mo_photo::phtcnt);
+  for (size_t i = 0; i < elevated_emis_var_names_.size(); ++i) {
+    data_interp_elevated_emissions_[i]->run(end_of_step_ts());
+  }
 
-  // climatology data for linear stratospheric chemistry
-  auto linoz_o3_clim      = buffer_.scratch[0]; // ozone (climatology) [vmr]
-  auto linoz_o3col_clim   = buffer_.scratch[1]; // column o3 above box (climatology) [Dobson Units (DU)]
-  auto linoz_t_clim       = buffer_.scratch[2]; // temperature (climatology) [K]
-  auto linoz_PmL_clim     = buffer_.scratch[3]; // P minus L (climatology) [vmr/s]
-  auto linoz_dPmL_dO3     = buffer_.scratch[4]; // sensitivity of P minus L to O3 [1/s]
-  auto linoz_dPmL_dT      = buffer_.scratch[5]; // sensitivity of P minus L to T3 [K]
-  auto linoz_dPmL_dO3col  = buffer_.scratch[6]; // sensitivity of P minus L to overhead O3 column [vmr/DU]
-  auto linoz_cariolle_psc = buffer_.scratch[7]; // Cariolle parameter for PSC loss of ozone [1/s]
+  // Compute orbital parameters; these are used both for computing
+  // the solar zenith angle.
+  // Note: We are following the RRTMGP EAMxx interface to compute the zenith
+  // angle. This operation is performed on the host because the routine
+  // shr_orb_cosz_c2f has not been ported to C++.
+  auto orbital_year = m_orbital_year;
+  // Note: We need double precision because
+  // shr_orb_params_c2f and shr_orb_decl_c2f only support double precision.
+  double obliqr, lambm0, mvelpp;
+  double eccen = m_orbital_eccen;
+  double obliq = m_orbital_obliq;
+  double mvelp = m_orbital_mvelp;
+  // Use the orbital parameters to calculate the solar declination and
+  // eccentricity factor
+  double delta, eccf;
+  if(eccen >= 0 && obliq >= 0 && mvelp >= 0) {
+    // use fixed orbital parameters; to force this, we need to set
+    // orbital_year to SHR_ORB_UNDEF_INT, which is exposed through
+    // our c2f bridge as shr_orb_undef_int_c2f
+    orbital_year = shr_orb_undef_int_c2f;
+  } else if(orbital_year < 0) {
+    // compute orbital parameters based on current year
+    orbital_year = start_of_step_ts().get_year();
+  }
+  shr_orb_params_c2f(&orbital_year,                                       // in
+                     &eccen, &obliq, &mvelp, &obliqr, &lambm0, &mvelpp);  // out
 
-  // it's a bit wasteful to store this for all columns, but simpler from an
-  // allocation perspective
-  auto o3_col_dens = buffer_.scratch[8];
+  // Want day + fraction; calday 1 == Jan 1 0Z
+  auto calday = start_of_step_ts().frac_of_year_in_days() + 1;
+  shr_orb_decl_c2f(calday, eccen, mvelpp, lambm0, obliqr,  // in
+                   &delta, &eccf);                         // out
+  {
+    const auto col_latitudes_host =
+        grid_->get_geometry_data("lat").get_view<const Real *, Host>();
+    const auto col_longitudes_host =
+        grid_->get_geometry_data("lon").get_view<const Real *, Host>();
+    // get a host copy of lat/lon
+    // Determine the cosine zenith angle
+    // NOTE: Since we are bridging to F90 arrays this must be done on HOST and
+    // then deep copied to a device view.
 
-  const_view_1d &col_latitudes = col_latitudes_;
-  mam_coupling::DryAtmosphere &dry_atm =  dry_atm_;
-  mam_coupling::AerosolState  &dry_aero = dry_aero_;
-  mam4::mo_photo::PhotoTableData &photo_table = photo_table_;
-  const int nlev = nlev_;
-  const Config &config = config_;
-  // FIXME: read relevant linoz climatology data from file(s) based on time
+    // Now use solar declination to calculate zenith angle for all points
+    for(int i = 0; i < ncol; i++) {
+      Real lat =
+          col_latitudes_host(i) * M_PI / 180.0;  // Convert lat/lon to radians
+      Real lon = col_longitudes_host(i) * M_PI / 180.0;
+      // what's the aerosol microphys frequency?
+      Real temp = shr_orb_cosz_c2f(calday, lat, lon, delta, dt);
+      acos_cosine_zenith_host_(i) = acos(temp);
+    }
+    Kokkos::deep_copy(acos_cosine_zenith_, acos_cosine_zenith_host_);
+  }
 
-  // FIXME: read relevant chlorine loading data from file based on time
+  constexpr int num_gas_aerosol_constituents = mam_coupling::gas_pcnst();
 
-  // loop over atmosphere columns and compute aerosol microphyscs
-  Kokkos::parallel_for(policy, KOKKOS_LAMBDA(const ThreadTeam& team) {
-    const int icol = team.league_rank(); // column index
+  const auto &extfrc   = extfrc_;
+  constexpr int extcnt = mam4::gas_chemistry::extcnt;
 
-    Real col_lat = col_latitudes(icol); // column latitude (degrees?)
+  run_microphysics_kernels(dt, eccf);
 
-    // fetch column-specific atmosphere state data
-    auto atm = mam_coupling::atmosphere_for_column(dry_atm, icol);
-    auto z_iface = ekat::subview(dry_atm.z_iface, icol);
-    Real phis = dry_atm.phis(icol);
+  auto extfrc_fm = get_field_out("mam4_external_forcing").get_view<Real***>();
 
-    // set surface state data
-    haero::Surface sfc{};
+  // Avogadro's number [molecules/mol]
+  const Real Avogadro = mam4::Constants::avogadro;
+  // Mapping from external forcing species index to physics constituent index
+  // NOTE: These indices should match the species in extfrc_lst
+  // TODO: getting rid of hard-coded indices
+  Kokkos::Array<int, extcnt> extfrc_pcnst_index = {3, 6, 14, 27, 28, 13, 18, 30, 5};
+  Kokkos::Array<Real, num_gas_aerosol_constituents> molar_mass_g_per_mol_tmp;
+  for (int i = 0; i < num_gas_aerosol_constituents; ++i) {
+    molar_mass_g_per_mol_tmp[i] = mam4::gas_chemistry::adv_mass[i];  // host-only access
+  }
 
-    // fetch column-specific subviews into aerosol prognostics
-    mam4::Prognostics progs = mam_coupling::interstitial_aerosols_for_column(dry_aero, icol);
-
-    // set up diagnostics
-    mam4::Diagnostics diags(nlev);
-
-    // calculate o3 column densities (first component of col_dens in Fortran code)
-    auto o3_col_dens_i = ekat::subview(o3_col_dens, icol);
-    impl::compute_o3_column_density(team, atm, progs, o3_col_dens_i);
-
-    // set up photolysis work arrays for this column.
-    mam4::mo_photo::PhotoTableWorkArrays photo_work_arrays;
-    // FIXME: set views here
-
-    // ... look up photolysis rates from our table
-    // NOTE: the table interpolation operates on an entire column of data, so we
-    // NOTE: must do it before dispatching to individual vertical levels
-    Real zenith_angle = 0.0; // FIXME: need to get this from EAMxx [radians]
-    Real surf_albedo = 0.0; // FIXME: surface albedo
-    Real esfact = 0.0; // FIXME: earth-sun distance factor
-    mam4::ColumnView lwc; // FIXME: liquid water cloud content: where do we get this?
-    mam4::mo_photo::table_photo(photo_rates, atm.pressure, atm.hydrostatic_dp,
-      atm.temperature, o3_col_dens_i, zenith_angle, surf_albedo, lwc,
-      atm.cloud_fraction, esfact, photo_table, photo_work_arrays);
-
-    // compute external forcings at time t(n+1) [molecules/cm^3/s]
-    constexpr int extcnt = mam4::gas_chemistry::extcnt;
-    view_2d extfrc; // FIXME: where to allocate? (nlev, extcnt)
-    mam4::mo_setext::Forcing forcings[extcnt]; // FIXME: forcings seem to require file data
-    mam4::mo_setext::extfrc_set(forcings, extfrc);
-
-    // compute aerosol microphysics on each vertical level within this column
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nlev), [&](const int k) {
-
-      constexpr int num_modes = mam4::AeroConfig::num_modes();
-      constexpr int gas_pcnst = mam_coupling::gas_pcnst();
-      constexpr int nqtendbb = mam_coupling::nqtendbb();
-
-      // extract atm state variables (input)
-      Real temp    = atm.temperature(k);
-      Real pmid    = atm.pressure(k);
-      Real pdel    = atm.hydrostatic_dp(k);
-      Real zm      = atm.height(k);
-      Real zi      = z_iface(k);
-      Real pblh    = atm.planetary_boundary_layer_height;
-      Real qv      = atm.vapor_mixing_ratio(k);
-      Real cldfrac = atm.cloud_fraction(k);
-
-      // extract aerosol state variables into "working arrays" (mass mixing ratios)
-      // (in EAM, this is done in the gas_phase_chemdr subroutine defined within
-      //  mozart/mo_gas_phase_chemdr.F90)
-      Real q[gas_pcnst] = {};
-      Real qqcw[gas_pcnst] = {};
-      mam_coupling::transfer_prognostics_to_work_arrays(progs, k, q, qqcw);
-
-      // convert mass mixing ratios to volume mixing ratios (VMR), equivalent
-      // to tracer mixing ratios (TMR))
-      Real vmr[gas_pcnst], vmrcw[gas_pcnst];
-      mam_coupling::convert_work_arrays_to_vmr(q, qqcw, vmr, vmrcw);
-
-      // aerosol/gas species tendencies (output)
-      Real vmr_tendbb[gas_pcnst][nqtendbb] = {};
-      Real vmrcw_tendbb[gas_pcnst][nqtendbb] = {};
-
-      // create work array copies to retain "pre-chemistry" values
-      Real vmr_pregaschem[gas_pcnst] = {};
-      Real vmr_precldchem[gas_pcnst] = {};
-      Real vmrcw_precldchem[gas_pcnst] = {};
-      for (int i = 0; i < gas_pcnst; ++i) {
-        vmr_pregaschem[i] = vmr[i];
-        vmr_precldchem[i] = vmr[i];
-        vmrcw_precldchem[i] = vmrcw[i];
-      }
-
-      //---------------------
-      // Gas Phase Chemistry
-      //---------------------
-      Real photo_rates_k[mam4::mo_photo::phtcnt];
-      for (int i = 0; i < mam4::mo_photo::phtcnt; ++i) {
-        photo_rates_k[i] = photo_rates(k, i);
-      }
-      Real extfrc_k[extcnt];
-      for (int i = 0; i < extcnt; ++i) {
-        extfrc_k[i] = extfrc(k, i);
-      }
-      constexpr int nfs = mam4::gas_chemistry::nfs; // number of "fixed species"
-      // NOTE: we compute invariants here and pass them out to use later with
-      // NOTE: setsox
-      Real invariants[nfs];
-      impl::gas_phase_chemistry(zm, zi, phis, temp, pmid, pdel, dt,
-                                photo_rates_k, extfrc_k, vmr, invariants);
-
-      //----------------------
-      // Aerosol microphysics
-      //----------------------
-      // the logic below is taken from the aero_model_gasaerexch subroutine in
-      // eam/src/chemistry/modal_aero/aero_model.F90
-
-      // aqueous chemistry ...
-      const int loffset = 8; // offset of first tracer in work arrays
-                             // (taken from mam4xx setsox validation test)
-      const Real mbar = haero::Constants::molec_weight_dry_air;
-      constexpr int indexm = 0;  // FIXME: index of xhnm in invariants array (??)
-      Real cldnum = 0.0; // FIXME: droplet number concentration: where do we get this?
-      setsox_single_level(loffset, dt, pmid, pdel, temp, mbar, lwc(k),
-        cldfrac, cldnum, invariants[indexm], config.setsox, vmrcw, vmr);
-
-      // calculate aerosol water content using water uptake treatment
-      // * dry and wet diameters [m]
-      // * wet densities [kg/m3]
-      // * aerosol water mass mixing ratio [kg/kg]
-      Real dgncur_a[num_modes]    = {};
-      Real dgncur_awet[num_modes] = {};
-      Real wetdens[num_modes]     = {};
-      Real qaerwat[num_modes]     = {};
-      impl::compute_water_content(progs, k, qv, temp, pmid, dgncur_a, dgncur_awet, wetdens, qaerwat);
-
-      // do aerosol microphysics (gas-aerosol exchange, nucleation, coagulation)
-      impl::modal_aero_amicphys_intr(config.amicphys, step_, dt, t, pmid, pdel,
-                                     zm, pblh, qv, cldfrac, vmr, vmrcw, vmr_pregaschem,
-                                     vmr_precldchem, vmrcw_precldchem, vmr_tendbb,
-                                     vmrcw_tendbb, dgncur_a, dgncur_awet,
-                                     wetdens, qaerwat);
-
-      //-----------------
-      // LINOZ chemistry
-      //-----------------
-
-      // the following things are diagnostics, which we're not
-      // including in the first rev
-      Real do3_linoz, do3_linoz_psc, ss_o3, o3col_du_diag, o3clim_linoz_diag,
-           zenith_angle_degrees;
-
-      // FIXME: Need to get chlorine loading data from file
-      Real chlorine_loading = 0.0;
-
-      Real rlats = col_lat * M_PI / 180.0; // convert column latitude to radians
-      int o3_ndx = 0; // index of "O3" in solsym array (in EAM)
-      mam4::lin_strat_chem::lin_strat_chem_solve_kk(o3_col_dens_i(k), temp,
-        zenith_angle, pmid, dt, rlats,
-        linoz_o3_clim(icol, k), linoz_t_clim(icol, k), linoz_o3col_clim(icol, k),
-        linoz_PmL_clim(icol, k), linoz_dPmL_dO3(icol, k), linoz_dPmL_dT(icol, k),
-        linoz_dPmL_dO3col(icol, k), linoz_cariolle_psc(icol, k),
-        chlorine_loading, config.linoz.psc_T, vmr[o3_ndx],
-        do3_linoz, do3_linoz_psc, ss_o3,
-        o3col_du_diag, o3clim_linoz_diag, zenith_angle_degrees);
-
-      // update source terms above the ozone decay threshold
-      if (k > nlev - config.linoz.o3_lbl - 1) {
-        Real do3_mass; // diagnostic, not needed
-        mam4::lin_strat_chem::lin_strat_sfcsink_kk(dt, pdel, vmr[o3_ndx], config.linoz.o3_sfc,
-          config.linoz.o3_tau, do3_mass);
-      }
-
-      // ... check for negative values and reset to zero
-      for (int i = 0; i < gas_pcnst; ++i) {
-        if (vmr[i] < 0.0) vmr[i] = 0.0;
-      }
-
-      //----------------------
-      // Dry deposition (gas)
-      //----------------------
-
-      // FIXME: C++ port in progress!
-      //mam4::drydep::drydep_xactive(...);
-
-      // transfer updated prognostics from work arrays
-      mam_coupling::convert_work_arrays_to_mmr(vmr, vmrcw, q, qqcw);
-      mam_coupling::transfer_work_arrays_to_prognostics(q, qqcw, progs, k);
-    });
+  Kokkos::parallel_for("copy_extfrc",
+     Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0,0,0}, {ncol, extcnt, nlev}),
+     KOKKOS_LAMBDA(const int i, const int j, const int k) {
+      const int pcnst_idx = extfrc_pcnst_index[j];
+      const Real molar_mass_g_per_mol = molar_mass_g_per_mol_tmp[pcnst_idx]; // g/mol
+      // Modify units to MKS units: [molec/cm3/s] to [kg/m3/s]
+      // Convert g → kg (× 1e-3), cm³ → m³ (× 1e6) → total factor: 1e-3 × 1e6 = 1e3 = 1000.0
+      extfrc_fm(i,j,k) = extfrc(i,k,j) * (molar_mass_g_per_mol / Avogadro) * 1000.0;
   });
 
   // postprocess output
-  Kokkos::parallel_for("postprocess", policy, postprocess_);
+  post_process(wet_aero_, dry_aero_, dry_atm_);
   Kokkos::fence();
-}
 
-void MAMMicrophysics::finalize_impl() {
-}
+}  // MAMMicrophysics::run_impl
 
-} // namespace scream
+}  // namespace scream

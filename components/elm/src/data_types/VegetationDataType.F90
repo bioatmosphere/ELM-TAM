@@ -29,6 +29,7 @@ module VegetationDataType
   use CNStateType     , only: cnstate_type
   use SpeciesMod              , only : species_from_string
   use VegetationType            , only : veg_pp
+  use ColumnType                , only : col_pp
   use VegetationPropertiesType  , only : veg_vp
   use LandunitType              , only : lun_pp
   use GridcellType              , only : grc_pp
@@ -1730,6 +1731,7 @@ module VegetationDataType
     use shr_const_mod    , only : SHR_CONST_CDAY, SHR_CONST_TKFRZ
     use elm_time_manager , only : get_step_size, get_nstep, is_end_curr_day, get_curr_date
     use accumulMod       , only : update_accum_field, extract_accum_field, accumResetVal
+    use pftvarcon        , only: nwcereal, nwcerealirrig
     !
     ! !ARGUMENTS:
     class(vegetation_energy_state)    :: this
@@ -1748,6 +1750,10 @@ module VegetationDataType
     integer :: begp, endp
     real(r8), pointer :: rbufslp(:)      ! temporary single level - pft level
     !---------------------------------------------------------------------
+
+   associate(                             &
+        ivt         => veg_pp%itype       & ! Input:  [integer  (:) ]  pft vegetation type
+        )
 
     begp = bounds%begp; endp = bounds%endp
 
@@ -1881,13 +1887,29 @@ module VegetationDataType
 
        do p = begp,endp
           g = veg_pp%gridcell(p)
-          if (month==1 .and. day==1 .and. secs==int(dtime)) then
-             rbufslp(p) = accumResetVal ! reset gdd
-          else if (( month > 3 .and. month < 10 .and. grc_pp%latdeg(g) >= 0._r8) .or. &
-                   ((month > 9 .or.  month < 4) .and. grc_pp%latdeg(g) <  0._r8)     ) then
-             rbufslp(p) = max(0._r8, min(26._r8, this%t_ref2m(p)-SHR_CONST_TKFRZ)) * dtime/SHR_CONST_CDAY
+
+          ! Added based on Yaqiong Lu et al., 2017 in Geosci. Model Dev.
+          ! Accumulate GDD0 for winter wheat from September to June in NH
+          ! April to December in SH, the accumulated period may be less than the actual
+          ! winter wheat growing season
+          if(ivt(p) == nwcereal .or. ivt(p) == nwcerealirrig) then
+             if (month==9 .and. day==1 .and. secs==int(dtime)) then
+                rbufslp(p) = accumResetVal ! reset gdd
+             else if (( month > 8 .or. month < 7 .and. grc_pp%latdeg(g) >= 0._r8) .or. &
+                      ((month > 3 .and. month < 10) .and. grc_pp%latdeg(g) <  0._r8)) then
+                rbufslp(p) = max(0._r8, min(26._r8, this%t_ref2m(p)-SHR_CONST_TKFRZ)) * dtime/SHR_CONST_CDAY
+             else
+                rbufslp(p) = 0._r8      ! keeps gdd unchanged at other times (eg,through Dec in NH)
+             end if
           else
-             rbufslp(p) = 0._r8      ! keeps gdd unchanged at other times (eg, through Dec in NH)
+             if (month==1 .and. day==1 .and. secs==int(dtime)) then
+                rbufslp(p) = accumResetVal ! reset gdd
+             else if (( month > 3 .and. month < 10 .and. grc_pp%latdeg(g) >= 0._r8) .or. &
+                      ((month > 9 .or.  month < 4) .and. grc_pp%latdeg(g) <  0._r8)     ) then
+                rbufslp(p) = max(0._r8, min(26._r8, this%t_ref2m(p)-SHR_CONST_TKFRZ)) * dtime/SHR_CONST_CDAY
+             else
+                rbufslp(p) = 0._r8      ! keeps gdd unchanged at other times (eg, through Dec in NH)
+             end if
           end if
        end do
        call update_accum_field  ('GDD0', rbufslp, nstep)
@@ -1929,6 +1951,7 @@ module VegetationDataType
     end if
 
     deallocate(rbufslp)
+    end associate
 
   end subroutine update_acc_vars_veg_es
 
@@ -2651,7 +2674,7 @@ module VegetationDataType
           this%leafcmax(p) = 0._r8
 
           l = veg_pp%landunit(p)
-          if (lun_pp%itype(l) == istsoil .or. lun_pp%itype(l) == istcrop) then
+          if (veg_pp%is_on_soil_col(p) .or. veg_pp%is_on_crop_col(p)) then
 
              if (veg_pp%itype(p) == noveg) then
                 this%leafc(p)         = 0._r8
@@ -3894,10 +3917,12 @@ module VegetationDataType
          totvegc_abg_patch(bounds%begp:bounds%endp), &
          totvegc_abg_col(bounds%begc:bounds%endc))
 
-    call p2c(bounds, num_soilc, filter_soilc, &
-         cropseedc_deficit_patch(bounds%begp:bounds%endp), &
-         cropseedc_deficit_col(bounds%begc:bounds%endc))
-    end associate
+    if (use_crop) then
+       call p2c(bounds, num_soilc, filter_soilc, &
+            cropseedc_deficit_patch(bounds%begp:bounds%endp), &
+            cropseedc_deficit_col(bounds%begc:bounds%endc))
+    endif
+  end associate
 
   end subroutine veg_cs_summary
 
@@ -4208,7 +4233,7 @@ module VegetationDataType
     do p = begp,endp
 
        l = veg_pp%landunit(p)
-       if (lun_pp%itype(l) == istsoil .or. lun_pp%itype(l) == istcrop) then
+       if (veg_pp%is_on_soil_col(p) .or. veg_pp%is_on_crop_col(p)) then
           if (veg_pp%itype(p) == noveg) then
              this%leafn(p) = 0._r8
              this%leafn_storage(p) = 0._r8
@@ -4613,10 +4638,11 @@ module VegetationDataType
         totpftn_patch(bounds%begp:bounds%endp) , &
         totpftn_col(bounds%begc:bounds%endc))
 
-   call p2c(bounds, num_soilc, filter_soilc, &
-        cropseedn_deficit_patch(bounds%begp:bounds%endp) , &
-        cropseedn_deficit_col(bounds%begc:bounds%endc))
-
+   if (use_crop) then
+      call p2c(bounds, num_soilc, filter_soilc, &
+           cropseedn_deficit_patch(bounds%begp:bounds%endp) , &
+           cropseedn_deficit_col(bounds%begc:bounds%endc))
+   endif
    end associate
 
   end subroutine veg_ns_summary
@@ -4729,7 +4755,7 @@ module VegetationDataType
     type(vegetation_carbon_state), intent(in) :: veg_cs
     !
     ! !LOCAL VARIABLES:
-    integer :: fp,l,p                      ! indices
+    integer :: fp,l,c,p                    ! indices
     integer :: num_special_patch           ! number of good values in special_patch filter
     integer :: special_patch (endp-begp+1) ! special landunit filter - patches
     !------------------------------------------------------------------------
@@ -4958,7 +4984,7 @@ module VegetationDataType
 
     do p = begp,endp
        l = veg_pp%landunit(p)
-       if (lun_pp%itype(l) == istsoil .or. lun_pp%itype(l) == istcrop) then
+       if (veg_pp%is_on_soil_col(p) .or. veg_pp%is_on_crop_col(p)) then
 
           if (veg_pp%itype(p) == noveg) then
              this%leafp(p) = 0._r8
@@ -5432,9 +5458,11 @@ module VegetationDataType
         totpftp_patch(bounds%begp:bounds%endp) , &
         totpftp_col(bounds%begc:bounds%endc) )
 
-   call p2c(bounds, num_soilc, filter_soilc, &
-        cropseedp_deficit_patch(bounds%begp:bounds%endp) , &
-        cropseedp_deficit_col(bounds%begc:bounds%endc) )
+   if (use_crop) then
+      call p2c(bounds, num_soilc, filter_soilc, &
+           cropseedp_deficit_patch(bounds%begp:bounds%endp) , &
+           cropseedp_deficit_col(bounds%begc:bounds%endc) )
+   endif
    end associate
 
   end subroutine veg_ps_summary
@@ -5965,7 +5993,7 @@ module VegetationDataType
     do p = begp, endp
        l = veg_pp%landunit(p)
 
-       if (lun_pp%itype(l)==istsoil) then
+       if (veg_pp%is_on_soil_col(p)) then
           this%n_irrig_steps_left(p) = 0
           this%irrig_rate(p)         = 0.0_r8
        end if
@@ -8755,7 +8783,7 @@ module VegetationDataType
                 this%xsmrpool_c13ratio(p)  = spval
              endif
           end if
-          if (lun_pp%itype(l) == istsoil .or. lun_pp%itype(l) == istcrop) then
+          if (veg_pp%is_on_soil_col(p) .or. veg_pp%is_on_crop_col(p)) then
              this%tempsum_npp(p)           = 0._r8
              this%annsum_npp(p)            = 0._r8
              this%availc(p)                = 0._r8
@@ -10643,7 +10671,7 @@ module VegetationDataType
           this%soyfixn(p)       = 0._r8
        end if
 
-       if (lun_pp%itype(l) == istsoil .or. lun_pp%itype(l) == istcrop) then
+       if (veg_pp%is_on_soil_col(p) .or. veg_pp%is_on_crop_col(p)) then
           this%fert_counter(p)  = 0._r8
        end if
 
@@ -11036,6 +11064,17 @@ module VegetationDataType
            this%hrv_deadcrootn_storage_to_litter(p)+ &
            this%hrv_deadcrootn_xfer_to_litter(p)
 
+          !Exit if any of the litter N loss terms are NaN
+          if (isnan(this%sen_nloss_litter(p)) .or.  &
+               isnan(this%livestemn_to_litter(p)) .or. &
+               isnan(this%leafn_to_litter(p)) .or. &
+#if defined(TAM)
+               isnan(this%froottn_to_litter(p))) then
+#else
+               isnan(this%frootn_to_litter(p))) then
+#endif
+               call endrun(msg = 'veg_nf_summary: NaN in litter N loss terms: '//errMsg(__FILE__, __LINE__))
+          endif
 
       if (crop_prog) then
 #if defined(TAM)
@@ -11093,7 +11132,7 @@ module VegetationDataType
     integer, intent(in) :: begp,endp
     !
     ! !LOCAL VARIABLES:
-    integer :: p,l                         ! indices
+    integer :: p,c,l                       ! indices
     integer :: fp                          ! filter indices
     integer :: num_special_patch           ! number of good values in special_patch filter
     integer :: special_patch(endp-begp+1)  ! special landunit filter - patches
@@ -11926,7 +11965,7 @@ module VegetationDataType
 
        end if
 
-       if (lun_pp%itype(l) == istsoil .or. lun_pp%itype(l) == istcrop) then
+       if (veg_pp%is_on_soil_col(p) .or. veg_pp%is_on_crop_col(p)) then
           this%fert_p_counter(p)  = 0._r8
        end if
 
@@ -12309,6 +12348,20 @@ module VegetationDataType
            this%hrv_deadcrootp_to_litter(p)       + &
            this%hrv_deadcrootp_storage_to_litter(p)+ &
            this%hrv_deadcrootp_xfer_to_litter(p)
+
+          ! Exit if any of the following are NaN
+          if (isnan(this%sen_ploss_litter(p)) .or. &
+              isnan(this%livestemp_to_litter(p)) .or. &
+              isnan(this%leafp_to_litter(p)) .or. &
+              isnan( this%frootp_to_litter(p))) then
+               call endrun(msg = 'veg_pf_summary: sen_ploss_litter, livestemp_to_litter, leafp_to_litter, or frootp_to_litter is NaN '//&
+               errMsg(__FILE__, __LINE__))
+          endif
+
+         this%sen_ploss_litter(p) = &
+              this%livestemp_to_litter(p)            + &
+              this%leafp_to_litter(p)                + &
+              this%frootp_to_litter(p)
 
       if (crop_prog) then
 #if defined(TAM)

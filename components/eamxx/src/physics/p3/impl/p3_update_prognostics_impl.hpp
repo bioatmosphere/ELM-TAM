@@ -10,23 +10,38 @@ template<typename S, typename D>
 KOKKOS_FUNCTION
 void Functions<S,D>
 ::update_prognostic_ice(
-  const Spack& qc2qi_hetero_freeze_tend, const Spack& qc2qi_collect_tend,  const Spack& qc2qr_ice_shed_tend, const Spack& nc_collect_tend,
-  const Spack& nc2ni_immers_freeze_tend, const Spack& ncshdc, const Spack& qr2qi_collect_tend, const Spack& nr_collect_tend,
-  const Spack& qr2qi_immers_freeze_tend, const Spack& nr2ni_immers_freeze_tend, const Spack& nr_ice_shed_tend, const Spack& qi2qr_melt_tend,
-  const Spack& ni2nr_melt_tend, const Spack& qi2qv_sublim_tend, const Spack& qv2qi_vapdep_tend, const Spack& qv2qi_nucleat_tend,
-  const Spack& ni_nucleat_tend, const Spack& ni_selfcollect_tend, const Spack& ni_sublim_tend, const Spack& qc2qi_berg_tend,
-  const Spack& inv_exner, const Spack& latent_heat_sublim, const Spack& latent_heat_fusion, const bool do_predict_nc,
-  const Smask& log_wetgrowth, const Scalar dt,  const Scalar& nmltratio, const Spack& rho_qm_cloud,
-  Spack& th_atm, Spack& qv, Spack& qi, Spack& ni, Spack& qm, Spack& bm, Spack& qc,
-  Spack& nc, Spack& qr, Spack& nr,
-  const Smask& context)
+  const Pack& qc2qi_hetero_freeze_tend, const Pack& qc2qi_collect_tend,  const Pack& qc2qr_ice_shed_tend, const Pack& nc_collect_tend,
+  const Pack& nc2ni_immers_freeze_tend, const Pack& ncshdc, const Pack& qr2qi_collect_tend, const Pack& nr_collect_tend,
+  const Pack& qr2qi_immers_freeze_tend, const Pack& nr2ni_immers_freeze_tend, const Pack& nr_ice_shed_tend, const Pack& qi2qr_melt_tend,
+  const Pack& ni2nr_melt_tend, const Pack& qi2qv_sublim_tend, const Pack& qv2qi_vapdep_tend, const Pack& qv2qi_nucleat_tend,
+  const Pack& ni_nucleat_tend, const Pack& ni_selfcollect_tend, const Pack& ni_sublim_tend, const Pack& qc2qi_berg_tend,
+  const Pack& inv_exner, const bool do_predict_nc,
+  const Mask& log_wetgrowth, const Scalar dt,  const Scalar& nmltratio, const Pack& rho_qm_cloud,
+  Pack& ncheti_cnt, Pack& nicnt, Pack& ninuc_cnt, Pack& qcheti_cnt, Pack& qicnt, Pack& qinuc_cnt,
+  Pack& th_atm, Pack& qv, Pack& qi, Pack& ni, Pack& qm, Pack& bm, Pack& qc,
+  Pack& nc, Pack& qr, Pack& nr, const bool& use_hetfrz_classnuc,
+  const Mask& context)
 {
   constexpr Scalar QSMALL          = C::QSMALL;
   constexpr Scalar INV_RHO_RIMEMAX = C::INV_RHO_RIMEMAX;
+  constexpr Scalar latvap          = C::LatVap.value;
+  constexpr Scalar latice          = C::LatIce.value;
 
-  qc.set(context, qc + (-qc2qi_hetero_freeze_tend-qc2qi_collect_tend-qc2qr_ice_shed_tend-qc2qi_berg_tend)*dt);
+  if(use_hetfrz_classnuc){
+    qc.set(context, qc + (-qcheti_cnt-qicnt-qc2qi_collect_tend-qc2qr_ice_shed_tend-qc2qi_berg_tend)*dt);
+  }
+  else{
+    qc.set(context, qc + (-qc2qi_hetero_freeze_tend-qc2qi_collect_tend-qc2qr_ice_shed_tend-qc2qi_berg_tend)*dt);
+  }
+
+
   if ( do_predict_nc ){
-    nc.set(context, nc + (-nc_collect_tend-nc2ni_immers_freeze_tend)*dt);
+    if(use_hetfrz_classnuc){
+      nc.set(context, nc + (-nc_collect_tend-ncheti_cnt-nicnt)*dt);
+    }
+    else{
+      nc.set(context, nc + (-nc_collect_tend-nc2ni_immers_freeze_tend)*dt);
+    }
   }
 
   qr.set(context, qr + (-qr2qi_collect_tend+qi2qr_melt_tend-qr2qi_immers_freeze_tend+qc2qr_ice_shed_tend)*dt);
@@ -43,14 +58,22 @@ void Functions<S,D>
     qi.set(qi_not_small, qi - (qi2qv_sublim_tend + qi2qr_melt_tend) * dt);
   }
 
-  const auto dum = (qr2qi_collect_tend + qc2qi_collect_tend + qr2qi_immers_freeze_tend + qc2qi_hetero_freeze_tend) * dt;
-  qi.set(context, qi + (qv2qi_vapdep_tend + qv2qi_nucleat_tend + qc2qi_berg_tend) * dt + dum);
-  qm.set(context, qm + dum);
-
-  bm.set(context, bm + (qr2qi_collect_tend * INV_RHO_RIMEMAX + qc2qi_collect_tend / rho_qm_cloud + (qr2qi_immers_freeze_tend +
-                                                                             qc2qi_hetero_freeze_tend) * INV_RHO_RIMEMAX) * dt);
-
-  ni.set(context, ni + (ni_nucleat_tend - ni2nr_melt_tend - ni_sublim_tend - ni_selfcollect_tend + nr2ni_immers_freeze_tend + nc2ni_immers_freeze_tend) * dt);
+  if(use_hetfrz_classnuc){
+    const auto dum = (qr2qi_collect_tend + qc2qi_collect_tend + qr2qi_immers_freeze_tend + qcheti_cnt+qicnt) * dt;
+    qi.set(context, qi + (qv2qi_vapdep_tend + qv2qi_nucleat_tend + qc2qi_berg_tend+qinuc_cnt)*dt + dum);
+    qm.set(context, qm + dum);
+    bm.set(context, bm + (qr2qi_collect_tend * INV_RHO_RIMEMAX + qc2qi_collect_tend / rho_qm_cloud + (qr2qi_immers_freeze_tend +
+                                                                              qcheti_cnt+qicnt) * INV_RHO_RIMEMAX) * dt);
+    ni.set(context, ni + (ni_nucleat_tend - ni2nr_melt_tend - ni_sublim_tend - ni_selfcollect_tend + nr2ni_immers_freeze_tend +ncheti_cnt+nicnt+ninuc_cnt)*dt);
+  }
+  else{
+    const auto dum = (qr2qi_collect_tend + qc2qi_collect_tend + qr2qi_immers_freeze_tend + qc2qi_hetero_freeze_tend) * dt;
+    qi.set(context, qi + (qv2qi_vapdep_tend + qv2qi_nucleat_tend + qc2qi_berg_tend) * dt + dum);
+    qm.set(context, qm + dum);
+    bm.set(context, bm + (qr2qi_collect_tend * INV_RHO_RIMEMAX + qc2qi_collect_tend / rho_qm_cloud + (qr2qi_immers_freeze_tend +
+                                                                              qc2qi_hetero_freeze_tend) * INV_RHO_RIMEMAX) * dt);
+    ni.set(context, ni + (ni_nucleat_tend - ni2nr_melt_tend - ni_sublim_tend - ni_selfcollect_tend + nr2ni_immers_freeze_tend + nc2ni_immers_freeze_tend) * dt);
+  }
 
   //PMC nCat deleted interactions_loop
 
@@ -73,28 +96,37 @@ void Functions<S,D>
   //   Alternatively, it can be simplified by tending qm -- qi
   //   and bm such that rho_rim (qm/bm) --> rho_liq during melting.
   // ==
-  qv.set(context, qv + (-qv2qi_vapdep_tend+qi2qv_sublim_tend-qv2qi_nucleat_tend)*dt);
 
-  constexpr Scalar INV_CP = C::INV_CP;
-  th_atm.set(context, th_atm + inv_exner * ((qv2qi_vapdep_tend - qi2qv_sublim_tend + qv2qi_nucleat_tend) * latent_heat_sublim * INV_CP +
-                                (qr2qi_collect_tend + qc2qi_collect_tend + qc2qi_hetero_freeze_tend + qr2qi_immers_freeze_tend - 
-                                qi2qr_melt_tend + qc2qi_berg_tend) * latent_heat_fusion * INV_CP) * dt);
+  constexpr Scalar INV_CP = C::INV_CP.value;
+  if(use_hetfrz_classnuc){
+    qv.set(context, qv + (-qv2qi_vapdep_tend+qi2qv_sublim_tend-qv2qi_nucleat_tend-qinuc_cnt)*dt);
+    th_atm.set(context, th_atm + inv_exner * ((qv2qi_vapdep_tend - qi2qv_sublim_tend + qv2qi_nucleat_tend+qinuc_cnt) * (latvap+latice) * INV_CP +
+                                (qr2qi_collect_tend + qc2qi_collect_tend + qcheti_cnt+qicnt + qr2qi_immers_freeze_tend -
+                                qi2qr_melt_tend + qc2qi_berg_tend) * latice * INV_CP) * dt);
+  }
+  else{
+    qv.set(context, qv + (-qv2qi_vapdep_tend+qi2qv_sublim_tend-qv2qi_nucleat_tend)*dt);
+    th_atm.set(context, th_atm + inv_exner * ((qv2qi_vapdep_tend - qi2qv_sublim_tend + qv2qi_nucleat_tend) * (latvap+latice) * INV_CP +
+                                (qr2qi_collect_tend + qc2qi_collect_tend + qc2qi_hetero_freeze_tend + qr2qi_immers_freeze_tend -
+                                qi2qr_melt_tend + qc2qi_berg_tend) * latice * INV_CP) * dt);
+  }
 }
 
 template<typename S, typename D>
 KOKKOS_FUNCTION
 void Functions<S,D>
 ::update_prognostic_liquid(
-  const Spack& qc2qr_accret_tend, const Spack& nc_accret_tend,
-  const Spack& qc2qr_autoconv_tend,const Spack& nc2nr_autoconv_tend, const Spack& ncautr,
-  const Spack& nc_selfcollect_tend, const Spack& qr2qv_evap_tend, const Spack& nr_evap_tend, const Spack& nr_selfcollect_tend,
-  const bool do_predict_nc, const bool do_prescribed_CCN, const Spack& inv_rho, const Spack& inv_exner, const Spack& latent_heat_vapor,
-  const Scalar dt, Spack& th_atm, Spack& qv, Spack& qc, Spack& nc, Spack& qr, Spack& nr,
-  const Smask& context)
+  const Pack& qc2qr_accret_tend, const Pack& nc_accret_tend,
+  const Pack& qc2qr_autoconv_tend,const Pack& nc2nr_autoconv_tend, const Pack& ncautr,
+  const Pack& nc_selfcollect_tend, const Pack& qr2qv_evap_tend, const Pack& nr_evap_tend, const Pack& nr_selfcollect_tend,
+  const bool do_predict_nc, const bool do_prescribed_CCN, const Pack& inv_rho, const Pack& inv_exner,
+  const Scalar dt, Pack& th_atm, Pack& qv, Pack& qc, Pack& nc, Pack& qr, Pack& nr,
+  const Mask& context)
 {
   constexpr Scalar NCCNST = C::NCCNST;
   constexpr int IPARAM    = C::IPARAM;
-  constexpr Scalar INV_CP = C::INV_CP;
+  constexpr Scalar INV_CP = C::INV_CP.value;
+  constexpr Scalar latvap = C::LatVap.value;
 
   qc.set(context, qc + (-qc2qr_accret_tend-qc2qr_autoconv_tend)*dt);
   qr.set(context, qr + (qc2qr_accret_tend+qc2qr_autoconv_tend-qr2qv_evap_tend)*dt);
@@ -115,7 +147,7 @@ void Functions<S,D>
 
   qv.set(context, qv + qr2qv_evap_tend *dt);
 
-  th_atm.set(context, th_atm + inv_exner*(-qr2qv_evap_tend * latent_heat_vapor * INV_CP) * dt);
+  th_atm.set(context, th_atm + inv_exner*(-qr2qv_evap_tend * latvap * INV_CP) * dt);
 }
 
 } // namespace p3

@@ -4,12 +4,10 @@ module dyn_grid_mod
   use shr_kind_mod,       only: r8 => shr_kind_r8
   use dimensions_mod,     only: nelem, nelemd, nelemdmax, np
   use edgetype_mod,       only: EdgeBuffer_t
+  use mpi
 
   implicit none
   private
-
-! We need MPI in here, so include it
-#include <mpif.h>
 
   public :: dyn_grid_init, get_my_dyn_data, cleanup_grid_init_data
 
@@ -23,7 +21,7 @@ contains
     use dimensions_mod,       only: nelemd
     use parallel_mod,         only: abortmp
     use homme_context_mod,    only: is_parallel_inited, elem, par, dom_mt, masterproc
-    use edge_mod_base,        only: initEdgeBuffer
+    use edge_mod,             only: initEdgeBuffer
 
     if (.not. is_parallel_inited) then
       call abortmp ("Error! 'homme_init_parallel_f90' must be called *before* init_dyn_grid_f90.\n")
@@ -47,10 +45,11 @@ contains
     use dimensions_mod,    only: nelemd, np
     use homme_context_mod, only: elem, par
     use shr_const_mod,     only: pi=>SHR_CONST_PI
-    use bndry_mod_base,    only: bndry_exchangeV
-    use edge_mod_base,     only: edgeVpack_nlyr, edgeVunpack_nlyr
+    use bndry_mod,         only: bndry_exchangeV
+    use edge_mod,          only: edgeVpack_nlyr, edgeVunpack_nlyr
     use kinds,             only: real_kind, int_kind
     use dof_mod,           only: genLocalDof
+    use control_mod,       only: geometry
     !
     ! Inputs
     !
@@ -62,6 +61,7 @@ contains
     real(kind=real_kind), allocatable :: el_cg_gids (:,:,:)  ! Homme's bex stuff only works with reals
     integer(kind=int_kind), allocatable :: el_dg_gids (:,:,:)  ! Homme's getLocalDof might not work with c_int
     integer :: idof, ip,jp, ie, icol
+    logical :: is_sphere
 
     ! Get the gids
     allocate(el_cg_gids(np,np,nelemd))
@@ -78,6 +78,7 @@ contains
       call edgeVpack_nlyr(edge,elem(ie)%desc,el_cg_gids(:,:,ie),1,0,1)
     enddo
     call bndry_exchangeV(par,edge)
+    is_sphere = trim(geometry) /= 'plane'
     do ie=1,nelemd
       call edgeVunpack_nlyr(edge,elem(ie)%desc,el_cg_gids(:,:,ie),1,0,1)
       elgids(ie) = elem(ie)%GlobalId
@@ -86,8 +87,12 @@ contains
           idof = (ie-1)*16+(jp-1)*4+ip
           cg_gids(idof) = INT(el_cg_gids(ip,jp,ie),kind=c_int)
           dg_gids(idof) = INT(el_dg_gids(ip,jp,ie),kind=c_int)
-          lat(ip,jp,ie)  = elem(ie)%spherep(ip,jp)%lat * 180.0_c_double/pi
-          lon(ip,jp,ie)  = elem(ie)%spherep(ip,jp)%lon * 180.0_c_double/pi
+          lat(ip,jp,ie) = elem(ie)%spherep(ip,jp)%lat
+          lon(ip,jp,ie) = elem(ie)%spherep(ip,jp)%lon
+          if (is_sphere) then
+             lat(ip,jp,ie) = lat(ip,jp,ie) * 180.0_c_double/pi
+             lon(ip,jp,ie) = lon(ip,jp,ie) * 180.0_c_double/pi
+          end if
           elgpgp(1,idof) = ie-1
           elgpgp(2,idof) = jp-1
           elgpgp(3,idof) = ip-1
@@ -97,7 +102,7 @@ contains
   end subroutine get_my_dyn_data
 
   subroutine cleanup_grid_init_data ()
-    use edge_mod_base,    only: FreeEdgeBuffer
+    use edge_mod, only: FreeEdgeBuffer
 
     ! Cleanup edge used in get_my_dyn_data
     ! NOTE: do not call prim_init1_cleanup, since compose,

@@ -10,7 +10,7 @@ module namelist_mod
   use kinds,      only: real_kind, iulog
   use params_mod, only: recursive, sfcurve, SPHERE_COORDS, Z2_NO_TASK_MAPPING
   use cube_mod,   only: rotate_grid
-#ifdef CAM
+#if defined(CAM) && !defined(MODEL_CESM)
   use dyn_grid,   only: fv_nphys
 #endif
   use physical_constants, only: rearth, rrearth, omega
@@ -40,12 +40,17 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
     restartdir,    &       ! name of the restart directory for OUTPUT
     runtype,       &
     integration,   &       ! integration method
-    theta_hydrostatic_mode,       &   
+    theta_hydrostatic_mode,       &
+    do_3d_turbulence,   &
     transport_alg , &      ! SE Eulerian, classical SL, cell-integrated SL
     semi_lagrange_cdr_alg, &     ! see control_mod for semi_lagrange_* descriptions
     semi_lagrange_cdr_check, &
     semi_lagrange_hv_q, &
     semi_lagrange_nearest_point_lev, &
+    semi_lagrange_halo, &
+    semi_lagrange_trajectory_nsubstep, &
+    semi_lagrange_trajectory_nvelocity, &
+    semi_lagrange_diagnostics, &
     tstep_type,    &
     cubed_sphere_map, &
     qsplit,        &
@@ -103,7 +108,6 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
     se_fv_phys_remap_alg, &
     internal_diagnostics_level, &
     timestep_make_subcycle_parameters_consistent
-
 
 !PLANAR setup
 #if !defined(CAM) && !defined(SCREAM)
@@ -180,13 +184,11 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
 
   use interpolate_mod, only : set_interp_parameter, get_interp_parameter
 
-
   !=======================================================================================================!
   ! This module should contain no global data and should only be used where readnl is called
 
   implicit none
   private
-
 
   public :: readnl
 
@@ -214,8 +216,14 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
     character(len=MAX_FILE_LEN) :: mesh_file
     integer :: se_ftype, se_limiter_option
     integer :: se_nsplit
-    integer :: interp_nlat, interp_nlon, interp_gridtype, interp_type
-    integer :: i, ii, j
+    integer :: interp_nlat, interp_nlon, interp_gridtype
+    integer :: i, ii
+#if !defined(CAM) && !defined(SCREAM)
+#if !defined(HOMME_WITHOUT_PIOLIBRARY)
+    integer :: j
+#endif
+    integer :: interp_type
+#endif
     integer  :: ierr
     character(len=80) :: errstr, arg
     real(kind=real_kind) :: dt_max, se_tstep
@@ -266,12 +274,18 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
       ne_y,            &             ! element resolution factor in y-dir for planar
       statefreq,     &             ! number of steps per printstate call
       integration,   &             ! integration method
-      theta_hydrostatic_mode,       &   
+      theta_hydrostatic_mode,       &
+      do_3d_turbulence, &
       transport_alg , &      ! SE Eulerian, classical SL, cell-integrated SL
       semi_lagrange_cdr_alg, &
       semi_lagrange_cdr_check, &
       semi_lagrange_hv_q, &
       semi_lagrange_nearest_point_lev, &
+      semi_lagrange_halo, &
+      semi_lagrange_trajectory_nsubstep, &
+      semi_lagrange_trajectory_nvelocity, &
+      semi_lagrange_diagnostics, &
+      semi_lagrange_hv_q, &
       tstep_type,    &
       cubed_sphere_map, &
       qsplit,        &
@@ -426,6 +440,13 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
     se_ftype = ftype   ! MNL: For non-CAM runs, ftype=0 in control_mod
     nsplit = 1
     pertlim = 0.0_real_kind
+#else
+    se_partmethod = SFCURVE
+    se_ne = 0
+    se_ne_x = 0
+    se_ne_y = 0
+    se_lx = 0
+    se_ly = 0
 #endif
     sub_case      = 1
     numnodes      = -1
@@ -441,17 +462,11 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
     ne              = 0
     ne_x              = 0
     ne_y              = 0
-    transport_alg = 0
-    semi_lagrange_cdr_alg = 3
-    semi_lagrange_cdr_check = .false.
-    semi_lagrange_hv_q = 1
-    semi_lagrange_nearest_point_lev = 256
     disable_diagnostics = .false.
-    se_fv_phys_remap_alg = 1
-    internal_diagnostics_level = 0
     planar_slice = .false.
 
     theta_hydrostatic_mode = .true.    ! for preqx, this must be .true.
+    do_3d_turbulence = .false.
 #if ( defined MODEL_THETA_C || defined MODEL_THETA_L ) 
     theta_hydrostatic_mode = .false.   ! default NH
 #endif
@@ -559,20 +574,7 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
            test_case(1:13)== "jw_baroclinic"  .or. &
            test_case(1:5) == "dcmip"          .or. &
            test_case(1:5) == "mtest"          .or. &
-           test_case      == "planar_hydro_gravity_wave"            .or. &
-           test_case      == "planar_nonhydro_gravity_wave"           .or. &
-           test_case      == "planar_hydro_mtn_wave"            .or. &
-           test_case      == "planar_nonhydro_mtn_wave"           .or. &
-           test_case      == "planar_schar_mtn_wave"            .or. &
-           test_case      == "planar_rising_bubble"             .or. &
-           test_case      == "planar_rising_bubble_pg2"         .or. &
-           test_case      == "planar_density_current"             .or. &
-           test_case      == "planar_baroclinic_instab"             .or. &
-           test_case      == "planar_moist_rising_bubble"            .or. &
-           test_case      == "planar_moist_density_current"            .or. &
-           test_case      == "planar_moist_baroclinic_instab"            .or. &
-           test_case      == "planar_tropical_cyclone"             .or. &
-           test_case      == "planar_supercell"             .or. &
+           test_case(1:6) == "planar"         .or. &
            test_case(1:4) == "asp_")  then
          write(iulog,*) "reading vertical namelist..."
 
@@ -851,11 +853,16 @@ use physical_constants, only : Sx, Sy, Lx, Ly, dx, dy, dx_ref, dy_ref
 #endif
 
     call MPI_bcast(theta_hydrostatic_mode ,1,MPIlogical_t,par%root,par%comm,ierr)
+    call MPI_bcast(do_3d_turbulence, 1, MPIlogical_t,par%root,par%comm,ierr)
     call MPI_bcast(transport_alg ,1,MPIinteger_t,par%root,par%comm,ierr)
     call MPI_bcast(semi_lagrange_cdr_alg ,1,MPIinteger_t,par%root,par%comm,ierr)
     call MPI_bcast(semi_lagrange_cdr_check ,1,MPIlogical_t,par%root,par%comm,ierr)
     call MPI_bcast(semi_lagrange_hv_q ,1,MPIinteger_t,par%root,par%comm,ierr)
     call MPI_bcast(semi_lagrange_nearest_point_lev ,1,MPIinteger_t,par%root,par%comm,ierr)
+    call MPI_bcast(semi_lagrange_halo ,1,MPIinteger_t,par%root,par%comm,ierr)
+    call MPI_bcast(semi_lagrange_trajectory_nsubstep ,1,MPIinteger_t,par%root,par%comm,ierr)
+    call MPI_bcast(semi_lagrange_trajectory_nvelocity ,1,MPIinteger_t,par%root,par%comm,ierr)
+    call MPI_bcast(semi_lagrange_diagnostics ,1,MPIinteger_t,par%root,par%comm,ierr)
     call MPI_bcast(tstep_type,1,MPIinteger_t ,par%root,par%comm,ierr)
     call MPI_bcast(cubed_sphere_map,1,MPIinteger_t ,par%root,par%comm,ierr)
     call MPI_bcast(qsplit,1,MPIinteger_t ,par%root,par%comm,ierr)
@@ -1167,11 +1174,16 @@ end if
           write(iulog,*)"readnl: rk_stage_user   = ",rk_stage_user
        endif
        write(iulog,*)"readnl: theta_hydrostatic_mode = ",theta_hydrostatic_mode
+       write(iulog,*)"readnl: do_3d_turbulence = ",do_3d_turbulence
        write(iulog,*)"readnl: transport_alg   = ",transport_alg
        write(iulog,*)"readnl: semi_lagrange_cdr_alg   = ",semi_lagrange_cdr_alg
        write(iulog,*)"readnl: semi_lagrange_cdr_check   = ",semi_lagrange_cdr_check
        write(iulog,*)"readnl: semi_lagrange_hv_q   = ",semi_lagrange_hv_q
        write(iulog,*)"readnl: semi_lagrange_nearest_point_lev   = ",semi_lagrange_nearest_point_lev
+       write(iulog,*)"readnl: semi_lagrange_halo   = ",semi_lagrange_halo
+       write(iulog,*)"readnl: semi_lagrange_trajectory_nsubstep   = ",semi_lagrange_trajectory_nsubstep
+       write(iulog,*)"readnl: semi_lagrange_trajectory_nvelocity   = ",semi_lagrange_trajectory_nvelocity
+       write(iulog,*)"readnl: semi_lagrange_diagnostics   = ",semi_lagrange_diagnostics
        write(iulog,*)"readnl: tstep_type    = ",tstep_type
        write(iulog,*)"readnl: theta_advect_form = ",theta_advect_form
        write(iulog,*)"readnl: vtheta_thresh     = ",vtheta_thresh

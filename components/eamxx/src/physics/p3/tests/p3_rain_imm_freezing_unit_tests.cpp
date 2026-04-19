@@ -1,12 +1,10 @@
 #include "catch2/catch.hpp"
 
-#include "share/scream_types.hpp"
-#include "ekat/ekat_pack.hpp"
-#include "ekat/kokkos/ekat_kokkos_utils.hpp"
 #include "p3_functions.hpp"
-#include "p3_functions_f90.hpp"
-
+#include "p3_test_data.hpp"
 #include "p3_unit_tests_common.hpp"
+
+#include "share/core/eamxx_types.hpp"
 
 #include <thread>
 #include <array>
@@ -18,21 +16,21 @@ namespace p3 {
 namespace unit_test {
 
 template <typename D>
-struct UnitWrap::UnitTest<D>::TestRainImmersionFreezing {
+struct UnitWrap::UnitTest<D>::TestRainImmersionFreezing : public UnitWrap::UnitTest<D>::Base {
 
-static void run_phys()
+void run_phys()
 {
   // TODO
 }
 
-static void run_bfb()
+void run_bfb()
 {
   // This is the threshold for whether the qc and qr cloud mixing ratios are
   // large enough to affect the warm-phase process rates qc2qr_accret_tend and nc_accret_tend.
   constexpr Scalar qsmall = C::QSMALL;
 
-  constexpr Scalar t_freezing = 0.9 * C::T_rainfrz,
-                   t_not_freezing = 2.0 * C::T_rainfrz;
+  constexpr Scalar t_freezing = 0.9 * C::T_rainfrz.value,
+                   t_not_freezing = 2.0 * C::T_rainfrz.value;
   constexpr Scalar qr_incld_small = 0.9 * qsmall;
   constexpr Scalar qr_incld_not_small = 2.0 * qsmall;
   constexpr Scalar lamr1 = 0.1, lamr2 = 0.2, lamr3 = 0.3, lamr4 = 0.4;
@@ -69,18 +67,20 @@ static void run_bfb()
             host_data.data());
   Kokkos::deep_copy(device_data, host_data);
 
-  // Run the Fortran subroutine.
-  for (Int i = 0; i < max_pack_size; ++i) {
-    rain_immersion_freezing(rain_imm_freezing_data[i]);
+  // Read baseline data
+  if (this->m_baseline_action == COMPARE) {
+    for (Int i = 0; i < max_pack_size; ++i) {
+      rain_imm_freezing_data[i].read(Base::m_ifile);
+    }
   }
 
   // Run the lookup from a kernel and copy results back to host
   Kokkos::parallel_for(num_test_itrs, KOKKOS_LAMBDA(const Int& i) {
-    const Int offset = i * Spack::n;
+    const Int offset = i * Pack::n;
 
     // Init pack inputs
-    Spack T_atm, lamr, mu_r, cdistr, qr_incld;
-    for (Int s = 0, vs = offset; s < Spack::n; ++s, ++vs) {
+    Pack T_atm, lamr, mu_r, cdistr, qr_incld;
+    for (Int s = 0, vs = offset; s < Pack::n; ++s, ++vs) {
       T_atm[s]    = device_data(vs).T_atm;
       lamr[s]     = device_data(vs).lamr;
       mu_r[s]     = device_data(vs).mu_r;
@@ -88,14 +88,15 @@ static void run_bfb()
       qr_incld[s] = device_data(vs).qr_incld;
     }
 
-    Spack qr2qi_immers_freeze_tend{0.0};
-    Spack nr2ni_immers_freeze_tend{0.0};
+    Pack qr2qi_immers_freeze_tend{0.0};
+    Pack nr2ni_immers_freeze_tend{0.0};
 
-    Functions::rain_immersion_freezing(T_atm, lamr, mu_r, cdistr, qr_incld,
-                                       qr2qi_immers_freeze_tend, nr2ni_immers_freeze_tend, physics::P3_Constants<Real>());
+    Functions::rain_immersion_freezing(
+        T_atm, lamr, mu_r, cdistr, qr_incld, qr2qi_immers_freeze_tend,
+        nr2ni_immers_freeze_tend, p3::Functions<Real,DefaultDevice>::P3Runtime());
 
     // Copy results back into views
-    for (Int s = 0, vs = offset; s < Spack::n; ++s, ++vs) {
+    for (Int s = 0, vs = offset; s < Pack::n; ++s, ++vs) {
       device_data(vs).qr2qi_immers_freeze_tend  = qr2qi_immers_freeze_tend[s];
       device_data(vs).nr2ni_immers_freeze_tend  = nr2ni_immers_freeze_tend[s];
     }
@@ -105,10 +106,15 @@ static void run_bfb()
   Kokkos::deep_copy(host_data, device_data);
 
   // Validate results.
-  if (SCREAM_BFB_TESTING) {
+  if (SCREAM_BFB_TESTING && this->m_baseline_action == COMPARE) {
     for (Int s = 0; s < max_pack_size; ++s) {
       REQUIRE(rain_imm_freezing_data[s].qr2qi_immers_freeze_tend == host_data[s].qr2qi_immers_freeze_tend);
       REQUIRE(rain_imm_freezing_data[s].nr2ni_immers_freeze_tend == host_data[s].nr2ni_immers_freeze_tend);
+    }
+  }
+  else if (this->m_baseline_action == GENERATE) {
+    for (Int s = 0; s < max_pack_size; ++s) {
+      host_data(s).write(Base::m_ofile);
     }
   }
 }
@@ -123,12 +129,11 @@ namespace {
 
 TEST_CASE("p3_rain_immersion_freezing", "[p3_functions]")
 {
-  using TRIF = scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestRainImmersionFreezing;
+  using T = scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestRainImmersionFreezing;
 
-  TRIF::run_phys();
-  TRIF::run_bfb();
-
-  scream::p3::P3GlobalForFortran::deinit();
+  T t;
+  t.run_phys();
+  t.run_bfb();
 }
 
 } // namespace

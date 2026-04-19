@@ -6,14 +6,14 @@ module homme_context_mod
   ! can alter as they see fit
 
   ! Import homme types to be used for module-level variables
-  use domain_mod,          only: domain1d_t
-  use derivative_mod_base, only: derivative_t
-  use element_mod,         only: element_t
-  use parallel_mod,        only: parallel_t, abortmp
-  use time_mod,            only: timelevel_t
-  use hybvcoord_mod,       only: hvcoord_t
-  use hybrid_mod,          only: hybrid_t
-  use prim_driver_base,    only: deriv => deriv1
+  use domain_mod,       only: domain1d_t
+  use derivative_mod,   only: derivative_t
+  use element_mod,      only: element_t
+  use parallel_mod,     only: parallel_t, abortmp
+  use time_mod,         only: timelevel_t
+  use hybvcoord_mod,    only: hvcoord_t
+  use hybrid_mod,       only: hybrid_t
+  use prim_driver_base, only: deriv => deriv1
 
   implicit none
   private
@@ -168,37 +168,37 @@ contains
   function is_parallel_inited_f90 () result(inited) bind(c)
     logical (kind=c_bool) :: inited
 
-    inited = is_parallel_inited
+    inited = LOGICAL(is_parallel_inited,kind=c_bool)
   end function is_parallel_inited_f90
 
   function is_params_inited_f90 () result(inited) bind(c)
     logical (kind=c_bool) :: inited
 
-    inited = is_params_inited
+    inited = LOGICAL(is_params_inited,kind=c_bool)
   end function is_params_inited_f90
 
   function is_geometry_inited_f90 () result(inited) bind(c)
     logical (kind=c_bool) :: inited
 
-    inited = is_geometry_inited
+    inited = LOGICAL(is_geometry_inited,kind=c_bool)
   end function is_geometry_inited_f90
 
   function is_data_structures_inited_f90 () result(inited) bind(c)
     logical (kind=c_bool) :: inited
 
-    inited = is_data_structures_inited
+    inited = LOGICAL(is_data_structures_inited,kind=c_bool)
   end function is_data_structures_inited_f90
 
   function is_model_inited_f90 () result(inited) bind(c)
     logical (kind=c_bool) :: inited
 
-    inited = is_model_inited
+    inited = LOGICAL(is_model_inited,kind=c_bool)
   end function is_model_inited_f90
 
   function is_hommexx_functors_inited_f90 () result(inited) bind(c)
     logical (kind=c_bool) :: inited
 
-    inited = is_hommexx_functors_inited
+    inited = LOGICAL(is_hommexx_functors_inited,kind=c_bool)
   end function is_hommexx_functors_inited_f90
 
 end module homme_context_mod

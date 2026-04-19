@@ -1,12 +1,10 @@
 #include "catch2/catch.hpp"
 
-#include "share/scream_types.hpp"
-#include "ekat/ekat_pack.hpp"
-#include "ekat/kokkos/ekat_kokkos_utils.hpp"
 #include "p3_functions.hpp"
-#include "p3_functions_f90.hpp"
-
+#include "p3_test_data.hpp"
 #include "p3_unit_tests_common.hpp"
+
+#include "share/core/eamxx_types.hpp"
 
 #include <thread>
 #include <array>
@@ -18,14 +16,14 @@ namespace p3 {
 namespace unit_test {
 
 template <typename D>
-struct UnitWrap::UnitTest<D>::TestDropletSelfCollection {
+struct UnitWrap::UnitTest<D>::TestDropletSelfCollection : public UnitWrap::UnitTest<D>::Base {
 
-static void run_phys()
+void run_phys()
 {
   // TODO
 }
 
-static void run_bfb()
+void run_bfb()
 {
   // This is the threshold for whether the qc and qr cloud mixing ratios are
   // large enough to affect the warm-phase process rates qc2qr_accret_tend and nc_accret_tend.
@@ -72,18 +70,20 @@ static void run_bfb()
             host_data.data());
   Kokkos::deep_copy(device_data, host_data);
 
-  // Run the Fortran subroutine.
-  for (Int i = 0; i < max_pack_size; ++i) {
-    droplet_self_collection(droplet_self_coll_data[i]);
+  // Read baseline data
+  if (this->m_baseline_action == COMPARE) {
+    for (Int i = 0; i < max_pack_size; ++i) {
+      droplet_self_coll_data[i].read(Base::m_ifile);
+    }
   }
 
   // Run the lookup from a kernel and copy results back to host
   Kokkos::parallel_for(num_test_itrs, KOKKOS_LAMBDA(const Int& i) {
-    const Int offset = i * Spack::n;
+    const Int offset = i * Pack::n;
 
     // Init pack inputs
-    Spack rho, inv_rho, qc_incld, mu_c, nu, nc2nr_autoconv_tend;
-    for (Int s = 0, vs = offset; s < Spack::n; ++s, ++vs) {
+    Pack rho, inv_rho, qc_incld, mu_c, nu, nc2nr_autoconv_tend;
+    for (Int s = 0, vs = offset; s < Pack::n; ++s, ++vs) {
       rho[s]                   = device_data(vs).rho;
       inv_rho[s]               = device_data(vs).inv_rho;
       qc_incld[s]              = device_data(vs).qc_incld;
@@ -92,13 +92,13 @@ static void run_bfb()
       nc2nr_autoconv_tend[s]   = device_data(vs).nc2nr_autoconv_tend;
     }
 
-    Spack nc_selfcollect_tend{0.0};
+    Pack nc_selfcollect_tend{0.0};
 
     Functions::droplet_self_collection(rho, inv_rho, qc_incld, mu_c, nu, nc2nr_autoconv_tend,
                                        nc_selfcollect_tend);
 
     // Copy results back into views
-    for (Int s = 0, vs = offset; s < Spack::n; ++s, ++vs) {
+    for (Int s = 0, vs = offset; s < Pack::n; ++s, ++vs) {
       device_data(vs).nc_selfcollect_tend  = nc_selfcollect_tend[s];
     }
   });
@@ -107,11 +107,17 @@ static void run_bfb()
   Kokkos::deep_copy(host_data, device_data);
 
   // Validate results.
-  if (SCREAM_BFB_TESTING) {
+  if (SCREAM_BFB_TESTING && this->m_baseline_action == COMPARE) {
     for (Int s = 0; s < max_pack_size; ++s) {
       REQUIRE(droplet_self_coll_data[s].nc_selfcollect_tend == host_data[s].nc_selfcollect_tend);
     }
   }
+  else if (this->m_baseline_action == GENERATE) {
+    for (Int s = 0; s < max_pack_size; ++s) {
+      host_data(s).write(Base::m_ofile);
+    }
+  }
+
 }
 
 };
@@ -124,12 +130,11 @@ namespace {
 
 TEST_CASE("p3_droplet_self_collection", "[p3_functions]")
 {
-  using TCRA = scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestDropletSelfCollection;
+  using T = scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestDropletSelfCollection;
 
-  TCRA::run_phys();
-  TCRA::run_bfb();
-
-  scream::p3::P3GlobalForFortran::deinit();
+  T t;
+  t.run_phys();
+  t.run_bfb();
 }
 
 } // namespace

@@ -1,12 +1,10 @@
 #include "catch2/catch.hpp"
 
-#include "share/scream_types.hpp"
-#include "ekat/ekat_pack.hpp"
-#include "ekat/kokkos/ekat_kokkos_utils.hpp"
 #include "p3_functions.hpp"
-#include "p3_functions_f90.hpp"
-
+#include "p3_test_data.hpp"
 #include "p3_unit_tests_common.hpp"
+
+#include "share/core/eamxx_types.hpp"
 
 #include <thread>
 #include <array>
@@ -18,14 +16,14 @@ namespace p3 {
 namespace unit_test {
 
 template <typename D>
-struct UnitWrap::UnitTest<D>::TestCalcRimeDensity {
+struct UnitWrap::UnitTest<D>::TestCalcRimeDensity : public UnitWrap::UnitTest<D>::Base {
 
-static void run_phys()
+void run_phys()
 {
   // TODO
 }
 
-static void run_bfb()
+void run_bfb()
 {
   // This is the threshold for whether the qc cloud mixing ratio is large
   // enough to affect the rime density.
@@ -39,8 +37,8 @@ static void run_bfb()
 
   // We need to test the calculation under freezing and not-freezing
   // conditions.
-  constexpr Scalar t_freezing = 0.9 * C::T_rainfrz,
-                   t_not_freezing = 2.0 * C::T_rainfrz;
+  constexpr Scalar t_freezing = 0.9 * C::T_rainfrz.value,
+                   t_not_freezing = 2.0 * C::T_rainfrz.value;
 
   // Ideally, we'd also test the calculation based on the mass-weighted mean
   // size Ri--whether it's above or below 8, specifically. Unfortunately,
@@ -87,18 +85,20 @@ static void run_bfb()
             host_data.data());
   Kokkos::deep_copy(device_data, host_data);
 
-  // Run the Fortran subroutine.
-  for (Int i = 0; i < max_pack_size; ++i) {
-    calc_rime_density(calc_rime_density_data[i]);
+  // Read baseline data
+  if (this->m_baseline_action == COMPARE) {
+    for (Int i = 0; i < max_pack_size; ++i) {
+      calc_rime_density_data[i].read(Base::m_ifile);
+    }
   }
 
   // Run the lookup from a kernel and copy results back to host
   Kokkos::parallel_for(num_test_itrs, KOKKOS_LAMBDA(const Int& i) {
-    const Int offset = i * Spack::n;
+    const Int offset = i * Pack::n;
 
     // Init pack inputs
-    Spack T_atm, rhofaci, table_val_qi_fallspd, acn, lamc, mu_c, qc_incld, qc2qi_collect_tend;
-    for (Int s = 0, vs = offset; s < Spack::n; ++s, ++vs) {
+    Pack T_atm, rhofaci, table_val_qi_fallspd, acn, lamc, mu_c, qc_incld, qc2qi_collect_tend;
+    for (Int s = 0, vs = offset; s < Pack::n; ++s, ++vs) {
       T_atm[s]                = device_data(vs).T_atm;
       rhofaci[s]              = device_data(vs).rhofaci;
       table_val_qi_fallspd[s] = device_data(vs).table_val_qi_fallspd;
@@ -109,14 +109,14 @@ static void run_bfb()
       qc2qi_collect_tend[s]   = device_data(vs).qc2qi_collect_tend;
     }
 
-    Spack vtrmi1{0.0};
-    Spack rho_qm_cloud{0.0};
+    Pack vtrmi1{0.0};
+    Pack rho_qm_cloud{0.0};
 
     Functions::calc_rime_density(T_atm, rhofaci, table_val_qi_fallspd, acn, lamc, mu_c,
                                  qc_incld, qc2qi_collect_tend, vtrmi1, rho_qm_cloud);
 
     // Copy results back into views
-    for (Int s = 0, vs = offset; s < Spack::n; ++s, ++vs) {
+    for (Int s = 0, vs = offset; s < Pack::n; ++s, ++vs) {
       device_data(vs).vtrmi1  = vtrmi1[s];
       device_data(vs).rho_qm_cloud  = rho_qm_cloud[s];
     }
@@ -126,10 +126,15 @@ static void run_bfb()
   Kokkos::deep_copy(host_data, device_data);
 
   // Validate results.
-  if (SCREAM_BFB_TESTING) {
+  if (SCREAM_BFB_TESTING && this->m_baseline_action == COMPARE) {
     for (Int s = 0; s < max_pack_size; ++s) {
       REQUIRE(calc_rime_density_data[s].vtrmi1 == host_data[s].vtrmi1);
       REQUIRE(calc_rime_density_data[s].rho_qm_cloud == host_data[s].rho_qm_cloud);
+    }
+  }
+  else if (this->m_baseline_action == GENERATE) {
+    for (Int s = 0; s < max_pack_size; ++s) {
+      host_data(s).write(Base::m_ofile);
     }
   }
 }
@@ -144,12 +149,11 @@ namespace {
 
 TEST_CASE("p3_calc_rime_density", "[p3_functions]")
 {
-  using TRIF = scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestCalcRimeDensity;
+  using T = scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestCalcRimeDensity;
 
-  TRIF::run_phys();
-  TRIF::run_bfb();
-
-  scream::p3::P3GlobalForFortran::deinit();
+  T t;
+  t.run_phys();
+  t.run_bfb();
 }
 
 } // namespace

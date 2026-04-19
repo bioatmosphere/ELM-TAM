@@ -21,7 +21,7 @@ use asp_tests,            only: asp_tracer, asp_baroclinic, asp_rossby, asp_moun
 use baroclinic_inst_mod,  only: binst_init_state, jw_baroclinic
 use dcmip12_wrapper,      only: dcmip2012_test1_1, dcmip2012_test1_2, dcmip2012_test1_3,&
                                 dcmip2012_test2_0, dcmip2012_test2_x, dcmip2012_test3,  &
-                                dcmip2012_test4_init, mtest_init, dcmip2012_test1_1_conv
+                                dcmip2012_test4_init, mtest_init, dcmip2012_test1_conv
 use dcmip16_wrapper,      only: dcmip2016_test1, dcmip2016_test2, dcmip2016_test3, &
                                 dcmip2016_test1_forcing, dcmip2016_test2_forcing, dcmip2016_test3_forcing, &
                                 dcmip2016_pg_init, dcmip2016_test1_pg, dcmip2016_test1_pg_forcing, dcmip2016_init
@@ -32,6 +32,7 @@ use dry_planar_tests,     only: planar_hydro_mountain_wave_init, planar_nonhydro
 use dry_planar_tests,     only: planar_rising_bubble_init, planar_density_current_init, planar_baroclinic_instab_init
 use moist_planar_tests,   only: planar_moist_rising_bubble_init, planar_moist_density_current_init, planar_moist_baroclinic_instab_init
 use moist_planar_tests,   only: planar_tropical_cyclone_init, planar_supercell_init
+use planar_transport_tests, only: test_conv_planar_advection
 
 implicit none
 
@@ -68,7 +69,8 @@ subroutine set_test_initial_conditions(elem, deriv, hybrid, hvcoord, tl, nets, n
     case('asp_tracer');
     case('baroclinic');
     case('dcmip2012_test1_1');
-    case('dcmip2012_test1_1_conv');
+    case('dcmip2012_test1_3a_conv', 'dcmip2012_test1_3b_conv', 'dcmip2012_test1_3c_conv', &
+         'dcmip2012_test1_3d_conv', 'dcmip2012_test1_3e_conv', 'dcmip2012_test1_3f_conv');
     case('dcmip2012_test1_2');
     case('dcmip2012_test1_3');
     case('dcmip2012_test2_0');
@@ -102,7 +104,8 @@ subroutine set_test_initial_conditions(elem, deriv, hybrid, hvcoord, tl, nets, n
     case('planar_moist_density_current');
     case('planar_moist_baroclinic_instab'); 
     case('planar_tropical_cyclone'); 
-    case('planar_supercell'); 
+    case('planar_supercell');
+    case('planar_transport_a');
     case default;               call abortmp('unrecognized test case')
   endselect
 
@@ -118,9 +121,10 @@ subroutine set_test_initial_conditions(elem, deriv, hybrid, hvcoord, tl, nets, n
       case('asp_tracer');         call asp_tracer       (elem,hybrid,hvcoord,nets,nete)
       case('baroclinic');         call binst_init_state (elem,hybrid, nets, nete, hvcoord)
       case('dcmip2012_test1_1');  call dcmip2012_test1_1(elem,hybrid,hvcoord,nets,nete,0.0d0,1,timelevels)
-      case('dcmip2012_test1_1_conv')
+      case('dcmip2012_test1_3a_conv', 'dcmip2012_test1_3b_conv', 'dcmip2012_test1_3c_conv', &
+           'dcmip2012_test1_3d_conv', 'dcmip2012_test1_3e_conv', 'dcmip2012_test1_3f_conv')
          midpoint_eta_dot_dpdn = .true.
-         call dcmip2012_test1_1_conv(elem,hybrid,hvcoord,nets,nete,0.0d0,1,timelevels)
+         call dcmip2012_test1_conv(test_case,elem,hybrid,hvcoord,deriv,nets,nete,0.0d0,1,timelevels)
       case('dcmip2012_test1_2');  call dcmip2012_test1_2(elem,hybrid,hvcoord,nets,nete,0.0d0,1,timelevels)
       case('dcmip2012_test1_3');  call dcmip2012_test1_3(elem,hybrid,hvcoord,nets,nete,0.0d0,1,timelevels,deriv)
       case('dcmip2012_test2_0');  call dcmip2012_test2_0(elem,hybrid,hvcoord,nets,nete)
@@ -156,6 +160,10 @@ subroutine set_test_initial_conditions(elem, deriv, hybrid, hvcoord, tl, nets, n
       case('planar_moist_baroclinic_instab');       call planar_moist_baroclinic_instab_init(elem,hybrid,hvcoord,nets,nete)
       case('planar_tropical_cyclone');              call planar_tropical_cyclone_init(elem,hybrid,hvcoord,nets,nete)
       case('planar_supercell');                     call planar_supercell_init(elem,hybrid,hvcoord,nets,nete)
+      case('planar_transport_a')
+         midpoint_eta_dot_dpdn = .true.
+         call test_conv_planar_advection( &
+              test_case,elem,hybrid,hvcoord,deriv,nets,nete,0.0d0,1,timelevels)
       case default;               call abortmp('unrecognized test case')
 
     endselect
@@ -197,9 +205,13 @@ subroutine set_test_prescribed_wind(elem, deriv, hybrid, hvcoord, dt, tl, nets, 
   ! set prescribed quantities at timelevel np1 
   select case(test_case)
     case('dcmip2012_test1_1'); call dcmip2012_test1_1(elem,hybrid,hvcoord,nets,nete,time,np1,np1)
-    case('dcmip2012_test1_1_conv'); call dcmip2012_test1_1_conv(elem,hybrid,hvcoord,nets,nete,time,np1,np1)
+    case('dcmip2012_test1_3a_conv', 'dcmip2012_test1_3b_conv', 'dcmip2012_test1_3c_conv', &
+         'dcmip2012_test1_3d_conv', 'dcmip2012_test1_3e_conv', 'dcmip2012_test1_3f_conv')
+       call dcmip2012_test1_conv(test_case,elem,hybrid,hvcoord,deriv,nets,nete,time,np1,np1)
     case('dcmip2012_test1_2'); call dcmip2012_test1_2(elem,hybrid,hvcoord,nets,nete,time,np1,np1)
     case('dcmip2012_test1_3'); call dcmip2012_test1_3(elem,hybrid,hvcoord,nets,nete,time,np1,np1,deriv)
+    case('planar_transport_a')
+       call test_conv_planar_advection(test_case,elem,hybrid,hvcoord,deriv,nets,nete,time,np1,np1)
   endselect
 
 end subroutine
@@ -351,6 +363,7 @@ end subroutine compute_test_forcing
   subroutine print_test_results(elem, tl, hvcoord, par)
     use parallel_mod, only: parallel_t
     use dcmip12_wrapper, only: dcmip2012_print_test1_conv_results
+    use planar_transport_tests, only: print_conv_planar_advection_results
 
     type(element_t), intent(in) :: elem(:)
     type(timelevel_t), intent(in) :: tl
@@ -358,7 +371,11 @@ end subroutine compute_test_forcing
     type(parallel_t), intent(in) :: par
 
     select case(test_case)
-       case('dcmip2012_test1_1_conv'); call dcmip2012_print_test1_conv_results(elem, tl, hvcoord, par, 1)
+    case('dcmip2012_test1_3a_conv', 'dcmip2012_test1_3b_conv', 'dcmip2012_test1_3c_conv', &
+         'dcmip2012_test1_3d_conv', 'dcmip2012_test1_3e_conv', 'dcmip2012_test1_3f_conv')
+       call dcmip2012_print_test1_conv_results(test_case, elem, tl, hvcoord, par, 1)
+    case('planar_transport_a')
+       call print_conv_planar_advection_results(test_case, elem, tl, hvcoord, par)
     end select
   end subroutine print_test_results
 

@@ -1,24 +1,24 @@
 #include <catch2/catch.hpp>
 
-#include "share/io/scream_output_manager.hpp"
+#include "share/io/eamxx_output_manager.hpp"
 #include "share/io/scorpio_input.hpp"
 
-#include "share/grid/mesh_free_grids_manager.hpp"
+#include "share/data_managers/mesh_free_grids_manager.hpp"
 
 #include "share/field/field_utils.hpp"
 #include "share/field/field.hpp"
-#include "share/field/field_manager.hpp"
+#include "share/data_managers/field_manager.hpp"
 
-#include "share/util/scream_universal_constants.hpp"
-#include "share/util/scream_setup_random_test.hpp"
-#include "share/util/scream_time_stamp.hpp"
-#include "share/scream_types.hpp"
+#include "share/util/eamxx_universal_constants.hpp"
+#include "share/core/eamxx_setup_random_test.hpp"
+#include "share/physics/physics_constants.hpp"
+#include "share/util/eamxx_time_stamp.hpp"
+#include "share/core/eamxx_types.hpp"
 
-#include "ekat/util/ekat_units.hpp"
-#include "ekat/ekat_parameter_list.hpp"
-#include "ekat/ekat_assert.hpp"
-#include "ekat/mpi/ekat_comm.hpp"
-#include "ekat/util/ekat_test_utils.hpp"
+#include <ekat_units.hpp>
+#include <ekat_parameter_list.hpp>
+#include <ekat_assert.hpp>
+#include <ekat_comm.hpp>
 
 #include <iomanip>
 #include <memory>
@@ -74,25 +74,17 @@ get_gm (const ekat::Comm& comm)
 
 std::shared_ptr<FieldManager>
 get_fm (const std::shared_ptr<const AbstractGrid>& grid,
-        const util::TimeStamp& t0, const int seed)
+        const util::TimeStamp& t0, int seed)
 {
   using FL  = FieldLayout;
   using FID = FieldIdentifier;
   using namespace ShortFieldTagsNames;
 
-  // Random number generation stuff
-  // NOTES
-  //  - Use integers, so we can check answers without risk of
-  //    non bfb diffs due to different order of sums.
-  //  - Uniform_int_distribution returns an int, and the randomize
-  //    util checks that return type matches the Field data type.
-  //    So wrap the int pdf in a lambda, that does the cast.
-  std::mt19937_64 engine(seed); 
-  auto my_pdf = [&](std::mt19937_64& engine) -> Real {
-    std::uniform_int_distribution<int> pdf (0,100);
-    Real v = pdf(engine);
-    return v;
-  };
+  // Note: we use a discrete set of random values, so we can
+  // check answers without risk of non-bfb diffs due to ops order
+  std::vector<Real> values;
+  for (int i=0; i<=100; ++i)
+    values.push_back(static_cast<Real>(i));
 
   const int nlcols = grid->get_num_local_dofs();
   const int nlevs  = grid->get_num_vertical_levels();
@@ -105,7 +97,7 @@ get_fm (const std::shared_ptr<const AbstractGrid>& grid,
   };
 
   auto fm = std::make_shared<FieldManager>(grid);
-  
+
   const auto units = ekat::units::Units::nondimensional();
   int count=0;
   using stratts_t = std::map<std::string,std::string>;
@@ -115,7 +107,7 @@ get_fm (const std::shared_ptr<const AbstractGrid>& grid,
     f.allocate_view();
     auto& str_atts = f.get_header().get_extra_data<stratts_t>("io: string attributes");
     str_atts["test"] = f.name();
-    randomize (f,engine,my_pdf);
+    randomize_discrete (f,seed++,values);
     f.get_header().get_tracking().update_time_stamp(t0);
     fm->add_field(f);
     ++count;
@@ -130,7 +122,7 @@ void write (const std::string& avg_type, const std::string& freq_units,
 {
   // Create grid
   auto gm = get_gm(comm);
-  auto grid = gm->get_grid("Point Grid");
+  auto grid = gm->get_grid("point_grid");
 
   // Time advance parameters
   auto t0 = get_t0();
@@ -139,29 +131,41 @@ void write (const std::string& avg_type, const std::string& freq_units,
   // Create some fields
   auto fm = get_fm(grid,t0,seed);
   std::vector<std::string> fnames;
-  for (auto it : *fm) {
+  for (auto it : fm->get_repo()) {
     fnames.push_back(it.second->name());
   }
 
   // Create output params
   ekat::ParameterList om_pl;
-  om_pl.set("MPI Ranks in Filename",true);
   om_pl.set("filename_prefix",std::string("io_basic"));
-  om_pl.set("Field Names",fnames);
-  om_pl.set("Averaging Type", avg_type);
+  om_pl.set("field_names",fnames);
+  om_pl.set("averaging_type", avg_type);
   auto& ctrl_pl = om_pl.sublist("output_control");
   ctrl_pl.set("frequency_units",freq_units);
-  ctrl_pl.set("Frequency",freq);
+  ctrl_pl.set("frequency",freq);
   ctrl_pl.set("save_grid_data",false);
+  // Also test writing physics constants to file
+  om_pl.set("constants",std::vector<std::string>{"gravit","Rgas"});
+
+  // While setting this is in practice irrelevant (we would close
+  // the file anyways at the end of the run), we can test that the OM closes
+  // the file AS SOON as it's full (before calling finalize)
+  int max_snaps = num_output_steps;
+  if (avg_type=="INSTANT") {
+    ++max_snaps;
+  }
+  om_pl.set("max_snapshots_per_file", max_snaps);
 
   // Create Output manager
   OutputManager om;
 
   // Attempt to use invalid fp precision string
-  om_pl.set("Floating Point Precision",std::string("triple"));
-  REQUIRE_THROWS (om.setup(comm,om_pl,fm,gm,t0,t0,false));
-  om_pl.set("Floating Point Precision",std::string("single"));
-  om.setup(comm,om_pl,fm,gm,t0,t0,false);
+  om_pl.set("floating_point_precision",std::string("triple"));
+  om.initialize(comm,om_pl,t0,false);
+  REQUIRE_THROWS (om.setup(fm,gm->get_grid_names()));
+  om_pl.set("floating_point_precision",std::string("single"));
+  om.initialize(comm,om_pl,t0,false);
+  om.setup(fm,gm->get_grid_names());
 
   // Time loop: ensure we always hit 3 output steps
   const int nsteps = num_output_steps*freq;
@@ -181,6 +185,10 @@ void write (const std::string& avg_type, const std::string& freq_units,
     om.run (t);
   }
 
+  // Check that the file was closed, since we reached full capacity
+  const auto& file_specs = om.output_file_specs();
+  REQUIRE (not file_specs.is_open);
+
   // Close file and cleanup
   om.finalize();
 }
@@ -197,14 +205,14 @@ void read (const std::string& avg_type, const std::string& freq_units,
 
   // Get gm
   auto gm = get_gm (comm);
-  auto grid = gm->get_grid("Point Grid");
+  auto grid = gm->get_grid("point_grid");
 
   // Get initial fields. Use wrong seed for fm, so fields are not
   // inited with right data (avoid getting right answer without reading).
   auto fm0 = get_fm(grid,t0,seed);
   auto fm  = get_fm(grid,t0,-seed-1);
   std::vector<std::string> fnames;
-  for (auto it : *fm) {
+  for (auto it : fm->get_repo()) {
     fnames.push_back(it.second->name());
   }
 
@@ -218,8 +226,8 @@ void read (const std::string& avg_type, const std::string& freq_units,
     + ".np" + std::to_string(comm.size())
     + "." + t0.to_string()
     + ".nc";
-  reader_pl.set("Filename",filename);
-  reader_pl.set("Field Names",fnames);
+  reader_pl.set("filename",filename);
+  reader_pl.set("field_names",fnames);
   AtmosphereInput reader(reader_pl,fm);
 
   // We added 1.0 to the input fields for each timestep
@@ -260,11 +268,25 @@ void read (const std::string& avg_type, const std::string& freq_units,
   // Check that the expected metadata was appropriately set for each variable
   for (const auto& fn: fnames) {
     auto att_fill = scorpio::get_attribute<float>(filename,fn,"_FillValue");
-    REQUIRE(att_fill==constants::DefaultFillValue<float>().value);
+    REQUIRE(att_fill==constants::fill_value<Real>);
 
     auto att_str = scorpio::get_attribute<std::string>(filename,fn,"test");
     REQUIRE (att_str==fn);
   }
+
+  // Check constants
+  Real Rgas_v, gravit_v;
+
+  auto Rgas_u = scorpio::get_attribute<std::string>(filename,"Rgas","units");
+  auto gravit_u = scorpio::get_attribute<std::string>(filename,"gravit","units");
+  scorpio::read_var(filename,"Rgas",&Rgas_v);
+  scorpio::read_var(filename,"gravit",&gravit_v);
+
+  const auto& dict = physics::Constants<Real>::dictionary();
+  REQUIRE (Rgas_u==dict.at("Rgas").units.to_string());
+  REQUIRE (gravit_u==dict.at("gravit").units.to_string());
+  REQUIRE (Rgas_v==dict.at("Rgas").value);
+  REQUIRE (gravit_v==dict.at("gravit").value);
 }
 
 TEST_CASE ("io_basic") {

@@ -650,7 +650,7 @@ contains
                 if (.not. use_firn_percolation_and_compaction) then
                    ! I don't think the next 5 lines are necessary (removed in CLMv5)
                    l = col_pp%landunit(c)
-                   if (ltype(l)==istice_mec .and. void < 0._r8) then
+                   if (ltype(l) == istice_mec .and. void < 0._r8) then
                       dz(c,j) = h2osoi_ice(c,j)/denice + h2osoi_liq(c,j)/denh2o
                       void = 0._r8
                    endif
@@ -670,7 +670,7 @@ contains
                       if (bi > dm) ddz1 = ddz1*exp(-46.0e-3_r8*(bi-dm))
                    else
                       ddz1_fresh = (-grav * (burden(c) + wx/2._r8)) / &
-                                   (0.007_r8 * bi**(4.75_r8 + td/40._r8))
+                                   (0.007_r8 * min(max(bi,dm),denice)**(4.75_r8 + min(td,0._r8)/40._r8))
                       snw_ssa = 3.e6_r8 / (denice * snw_rds(c,j))
                       if (snw_ssa < 50._r8) then
                           ddz1_fresh = ddz1_fresh * exp(-46.e-2_r8 * (50._r8 - snw_ssa))
@@ -705,7 +705,7 @@ contains
                    ! Compaction occurring during melt
 
                    if (imelt(c,j) == 1) then
-                      if(subgridflag==1 .and. (ltype(col_pp%landunit(c)) == istsoil .or. ltype(col_pp%landunit(c)) == istcrop)) then
+                      if(subgridflag==1 .and. (col_pp%is_soil(c) .or. col_pp%is_crop(c))) then
                          ! first term is delta mass over mass
                          ddz3 = max(0._r8,min(1._r8,(swe_old(c,j) - wx)/wx))
 
@@ -858,7 +858,7 @@ contains
        if (num_snowc > 0) then
           c = filter_snowc(1)
           l = col_pp%landunit(c)
-          if (ltype(l) == istdlak) then ! Called from LakeHydrology
+          if (col_pp%is_lake(c)) then ! Called from LakeHydrology
             if (.not. use_extrasnowlayers) then
                dzminloc(:) = dzmin(:) + lsadz
             else
@@ -884,7 +884,7 @@ contains
           do j = msn_old(c)+1,0
              ! use 0.01 to avoid runaway ice buildup
              if (h2osoi_ice(c,j) <= .01_r8) then
-                if (ltype(l) == istsoil .or. urbpoi(l) .or. ltype(l) == istcrop) then
+                if (col_pp%is_soil(c) .or. urbpoi(l) .or. col_pp%is_crop(c)) then
                    h2osoi_liq(c,j+1) = h2osoi_liq(c,j+1) + h2osoi_liq(c,j)
                    h2osoi_ice(c,j+1) = h2osoi_ice(c,j+1) + h2osoi_ice(c,j)
 
@@ -911,7 +911,7 @@ contains
                       mss_dst4(c,j+1)  = mss_dst4(c,j+1)   + mss_dst4(c,j)
                    end if
 
-                else if (ltype(l) /= istsoil .and. .not. urbpoi(l) .and. ltype(l) /= istcrop .and. j /= 0) then
+                else if (.not.col_pp%is_soil(c) .and. .not. urbpoi(l) .and. .not.col_pp%is_crop(c) .and. j /= 0) then
 
                    h2osoi_liq(c,j+1) = h2osoi_liq(c,j+1) + h2osoi_liq(c,j)
                    h2osoi_ice(c,j+1) = h2osoi_ice(c,j+1) + h2osoi_ice(c,j)
@@ -935,7 +935,7 @@ contains
                       ! urban, soil or crop, the h2osoi_liq and h2osoi_ice associated with this layer is sent
                       ! to qflx_qrgwl later on in the code.  To keep track of this for the snow balance
                       ! error check, we add this to qflx_sl_top_soil here
-                      if (ltype(l) /= istsoil .and. ltype(l) /= istcrop .and. .not. urbpoi(l) .and. i == 0) then
+                      if (.not.col_pp%is_soil(c) .and. .not.col_pp%is_crop(c) .and. .not. urbpoi(l) .and. i == 0) then
                          qflx_sl_top_soil(c) = (h2osoi_liq(c,i) + h2osoi_ice(c,i))/dtime
                       end if
 
@@ -987,7 +987,7 @@ contains
           c = filter_snowc(fc)
           l = col_pp%landunit(c)
           if (snow_depth(c) > 0._r8) then
-             if ((ltype(l) == istdlak .and. snow_depth(c) < 0.01_r8 + lsadz ) .or. &
+             if ((col_pp%is_lake(c) .and. snow_depth(c) < 0.01_r8 + lsadz ) .or. &
                   ((ltype(l) /= istdlak) .and. ((frac_sno_eff(c)*snow_depth(c) < 0.01_r8)  &
                   .or. (h2osno(c)/(frac_sno_eff(c)*snow_depth(c)) < 50._r8)))) then
 
@@ -1005,7 +1005,7 @@ contains
 
                 if (h2osno(c) <= 0._r8) snow_depth(c) = 0._r8
                 ! this is where water is transfered from layer 0 (snow) to layer 1 (soil)
-                if (ltype(l) == istsoil .or. urbpoi(l) .or. ltype(l) == istcrop) then
+                if (col_pp%is_soil(c) .or. urbpoi(l) .or. col_pp%is_crop(c)) then
                    h2osoi_liq(c,0) = 0.0_r8
                    h2osoi_liq(c,1) = h2osoi_liq(c,1) + zwliq(c)
                    qflx_snow2topsoi(c) = zwliq(c)/dtime
@@ -1014,7 +1014,7 @@ contains
                 if (ltype(l) == istwet) then
                    h2osoi_liq(c,0) = 0.0_r8
                 endif
-                if (ltype(l) == istice .or. ltype(l)==istice_mec) then
+                if (ltype(l) == istice .or. ltype(l) == istice_mec) then
                    h2osoi_liq(c,0) = 0.0_r8
                 endif
              endif
@@ -2273,6 +2273,7 @@ contains
      associate( &
          qflx_snwcp_ice     => col_wf%qflx_snwcp_ice               , & ! Output: [real(r8) (:)   ]  excess solid h2o due to snow capping (outgoing) (mm H2O /s) [+]
          qflx_snwcp_liq     => col_wf%qflx_snwcp_liq               , & ! Output: [real(r8) (:)   ]  excess liquid h2o due to snow capping (outgoing) (mm H2O /s) [+]
+         qflx_ice_runoff_xs =>    col_wf%qflx_ice_runoff_xs        , & ! Input:  [real(r8) (:)   ] 
          h2osoi_ice         => col_ws%h2osoi_ice                   , & ! In/Out: [real(r8) (:,:) ] ice lens (kg/m2)                       
          h2osoi_liq         => col_ws%h2osoi_liq                   , & ! In/Out: [real(r8) (:,:) ] liquid water (kg/m2)                   
          h2osno             => col_ws%h2osno                       , & ! Input:  [real(r8) (:)   ] snow water (mm H2O)
@@ -2294,6 +2295,7 @@ contains
         c = filter_initc(fc)
         qflx_snwcp_ice(c) = 0.0_r8
         qflx_snwcp_liq(c) = 0.0_r8
+        qflx_ice_runoff_xs(c) = 0.0_r8
      end do
 
      loop_columns: do fc = 1, num_snowc

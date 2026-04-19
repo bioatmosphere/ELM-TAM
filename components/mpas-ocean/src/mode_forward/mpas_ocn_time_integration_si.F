@@ -380,6 +380,8 @@ module ocn_time_integration_si
 
       real (kind=RKIND), dimension(:,:,:), pointer :: activeTracersNew
 
+      real (kind=RKIND), pointer :: forcingTimeIncrement
+
       ! Remap variables
       real (kind=RKIND), dimension(:,:), pointer :: &
          layerThicknessLagNew
@@ -506,6 +508,11 @@ module ocn_time_integration_si
                                           lowFreqDivergenceTend)
 
       call mpas_pool_get_array(tracersPool, 'activeTracers', activeTracersNew, 2)
+
+      call mpas_pool_get_array(forcingPool, 'forcingTimeIncrement', &
+                                             forcingTimeIncrement)
+
+      forcingTimeIncrement = 0.0_RKIND
 
       allocate(bottomDepthEdge(nEdgesAll+1))
 
@@ -1430,8 +1437,10 @@ module ocn_time_integration_si
                ! Use of sshNew to save the lagged SSH
                sshNew(iCell) = sshSubcycleNew(iCell)
             end do
+#ifndef MPAS_OPENACC
             !$omp end do
             !$omp end parallel
+#endif
    
 #ifdef MPAS_OPENACC
             !$acc parallel loop async &
@@ -1669,8 +1678,10 @@ module ocn_time_integration_si
                SIvec_s0(iCell)  = 0.0_RKIND
                SIvec_z0(iCell)  = 0.0_RKIND
             end do ! iCell
+#ifndef MPAS_OPENACC
             !$omp end do
             !$omp end parallel
+#endif
    
             ! Preconditioning --------------------------------------------!
 
@@ -2548,10 +2559,8 @@ module ocn_time_integration_si
                         layerThicknessNew(k,iCell)
                      end do
                      end do
-#ifndef MPAS_OPENACC
                      !$omp end do
                      !$omp end parallel
-#endif
 
                      ! limit salinity in separate loop
                      if (trim(groupItr%memberName) == &
@@ -2565,10 +2574,8 @@ module ocn_time_integration_si
                            tracersGroupNew(indexSalinity,k,iCell))
                         end do
                         end do
-#ifndef MPAS_OPENACC
                         !$omp end do
                         !$omp end parallel
-#endif
                      end if
 
                      ! Reset debugTracers to fixed value at the surface
@@ -2587,7 +2594,7 @@ module ocn_time_integration_si
 
                            ! Reset tracer2 to 2 in top n layers
                            ! in zonal bands, and 1 outside
-                           lat = latCell(iCell)*180./3.1415
+                           lat = latCell(iCell)*180.0_RKIND/pi
                            if (     lat>-60.0.and.lat<-55.0 &
                                 .or.lat>-40.0.and.lat<-35.0 &
                                 .or.lat>- 2.5.and.lat<  2.5 &
@@ -2604,7 +2611,7 @@ module ocn_time_integration_si
 
                            ! Reset tracer3 to 2 in top n layers
                            ! in zonal bands, and 1 outside
-                           lat = latCell(iCell)*180./3.1415
+                           lat = latCell(iCell)*180.0_RKIND/pi
                            if (     lat>-55.0.and.lat<-50.0 &
                                 .or.lat>-35.0.and.lat<-30.0 &
                                 .or.lat>-15.0.and.lat<-10.0 &
@@ -2620,10 +2627,8 @@ module ocn_time_integration_si
                               end do
                            end if
                         end do ! cells
-#ifndef MPAS_OPENACC
                         !$omp end do
                         !$omp end parallel
-#endif
                      end if ! debug tracers
                   end if ! use tracer group
                end if ! tracer

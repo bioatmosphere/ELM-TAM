@@ -1,13 +1,10 @@
 #include "catch2/catch.hpp"
 
-#include "share/scream_types.hpp"
-#include "ekat/ekat_pack.hpp"
-#include "ekat/kokkos/ekat_kokkos_utils.hpp"
 #include "p3_functions.hpp"
-#include "p3_functions_f90.hpp"
-#include "share/util/scream_setup_random_test.hpp"
-
+#include "p3_test_data.hpp"
 #include "p3_unit_tests_common.hpp"
+
+#include "share/core/eamxx_types.hpp"
 
 #include <thread>
 #include <array>
@@ -20,22 +17,19 @@ namespace p3 {
 namespace unit_test {
 
 template <typename D>
-struct UnitWrap::UnitTest<D>::TestCalcLiqRelaxationTimescale {
+struct UnitWrap::UnitTest<D>::TestCalcLiqRelaxationTimescale : public UnitWrap::UnitTest<D>::Base {
 
-  static void run_phys()
+  void run_phys()
   {
     // TODO
   }
 
-  static void run_bfb()
+  void run_bfb()
   {
-    auto engine = setup_random_test();
+    auto engine = Base::get_engine();
 
     // Read in tables
-    view_2d_table vn_table_vals, vm_table_vals, revap_table_vals;
-    view_1d_table mu_r_table_vals;
-    view_dnu_table dnu;
-    Functions::init_kokkos_tables(vn_table_vals, vm_table_vals, revap_table_vals, mu_r_table_vals, dnu);
+    auto revap_table_vals = Functions::p3_init().revap_table_vals;
 
     using KTH = KokkosTypes<HostDevice>;
 
@@ -54,9 +48,11 @@ struct UnitWrap::UnitTest<D>::TestCalcLiqRelaxationTimescale {
       self[i].f2r = C::f2r;
     }
 
-    // Get data from fortran
-    for (Int i = 0; i < max_pack_size; ++i) {
-      calc_liq_relaxation_timescale(self[i]);
+  // Read baseline data
+    if (this->m_baseline_action == COMPARE) {
+      for (Int i = 0; i < max_pack_size; ++i) {
+        self[i].read(Base::m_ifile);
+      }
     }
 
     // Sync to device
@@ -67,12 +63,12 @@ struct UnitWrap::UnitTest<D>::TestCalcLiqRelaxationTimescale {
 
     // Run the lookup from a kernel and copy results back to host
     Kokkos::parallel_for(num_test_itrs, KOKKOS_LAMBDA(const Int& i) {
-      const Int offset = i * Spack::n;
+      const Int offset = i * Pack::n;
 
       // Init pack inputs
-      Spack rho, dv, mu, sc, mu_r, lamr, cdistr, cdist, qr_incld, qc_incld;
+      Pack rho, dv, mu, sc, mu_r, lamr, cdistr, cdist, qr_incld, qc_incld;
 
-      for (Int s = 0, vs = offset; s < Spack::n; ++s, ++vs) {
+      for (Int s = 0, vs = offset; s < Pack::n; ++s, ++vs) {
         rho[s]      = self_device(vs).rho;
         dv[s]       = self_device(vs).dv;
         mu[s]       = self_device(vs).mu;
@@ -85,11 +81,11 @@ struct UnitWrap::UnitTest<D>::TestCalcLiqRelaxationTimescale {
         qc_incld[s] = self_device(vs).qc_incld;
       }
 
-      Spack epsr{0.0}, epsc{0.0};
+      Pack epsr{0.0}, epsc{0.0};
       Functions::calc_liq_relaxation_timescale(revap_table_vals, rho, self_device(0).f1r, self_device(0).f2r, dv,
         mu, sc, mu_r, lamr, cdistr, cdist, qr_incld, qc_incld, epsr, epsc);
 
-      for (Int s = 0, vs = offset; s < Spack::n; ++s, ++vs) {
+      for (Int s = 0, vs = offset; s < Pack::n; ++s, ++vs) {
         self_device(vs).epsr = epsr[s];
         self_device(vs).epsc = epsc[s];
       }
@@ -97,10 +93,15 @@ struct UnitWrap::UnitTest<D>::TestCalcLiqRelaxationTimescale {
 
     Kokkos::deep_copy(self_host, self_device);
 
-    if (SCREAM_BFB_TESTING) {
+    if (SCREAM_BFB_TESTING && this->m_baseline_action == COMPARE) {
       for (Int s = 0; s < max_pack_size; ++s) {
         REQUIRE(self[s].epsr == self_host(s).epsr);
         REQUIRE(self[s].epsc == self_host(s).epsc);
+      }
+    }
+    else if (this->m_baseline_action == GENERATE) {
+      for (Int s = 0; s < max_pack_size; ++s) {
+        self_host(s).write(Base::m_ofile);
       }
     }
   }
@@ -115,10 +116,11 @@ namespace {
 
 TEST_CASE("p3_calc_liq_relaxation_timescale", "[p3_functions]")
 {
-  using TD = scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestCalcLiqRelaxationTimescale;
+  using T = scream::p3::unit_test::UnitWrap::UnitTest<scream::DefaultDevice>::TestCalcLiqRelaxationTimescale;
 
-  TD::run_phys();
-  TD::run_bfb();
+  T t;
+  t.run_phys();
+  t.run_bfb();
 }
 
 }

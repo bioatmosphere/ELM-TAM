@@ -2,13 +2,10 @@
 
 #include "shoc_unit_tests_common.hpp"
 #include "shoc_functions.hpp"
-#include "shoc_functions_f90.hpp"
-#include "physics/share/physics_constants.hpp"
-#include "share/scream_types.hpp"
+#include "shoc_test_data.hpp"
+#include "share/physics/physics_constants.hpp"
+#include "share/core/eamxx_types.hpp"
 
-#include "ekat/ekat_pack.hpp"
-#include "ekat/util/ekat_arch.hpp"
-#include "ekat/kokkos/ekat_kokkos_utils.hpp"
 
 #include <algorithm>
 #include <array>
@@ -46,6 +43,7 @@ struct UnitWrap::UnitTest<D>::TestShocVVParameters {
     SDS.w_first = w_first_sym;
     SDS.w_sec = w_sec_sym;
     SDS.w3var = w3var_sym;
+    SDS.w_tol_sqd = 0;
 
     // Verify input is physical
     REQUIRE(SDS.w_sec >= 0);
@@ -92,7 +90,7 @@ struct UnitWrap::UnitTest<D>::TestShocVVParameters {
 
     // Verify that first gaussian absolute value is larger
     //  than second gaussian
-    REQUIRE(abs(SDS.w1_1) > abs(SDS.w1_2));
+    REQUIRE(std::abs(SDS.w1_1) > std::abs(SDS.w1_2));
 
     // TEST THREE
     // Given highly negative skewed distribution, verify that the gaussian
@@ -125,7 +123,7 @@ struct UnitWrap::UnitTest<D>::TestShocVVParameters {
 
     // Verify that second gaussian absolute value is larger
     //  than first gaussian
-    REQUIRE(abs(SDS.w1_1) < abs(SDS.w1_2));
+    REQUIRE(std::abs(SDS.w1_1) < std::abs(SDS.w1_2));
   }
 
   static void run_bfb()

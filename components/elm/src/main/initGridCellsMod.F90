@@ -13,7 +13,7 @@ module initGridCellsMod
   use spmdMod        , only : masterproc,iam
   use abortutils     , only : endrun
   use elm_varctl     , only : iulog
-  use elm_varctl     , only : use_fates, use_fates_sp
+  use elm_varctl     , only : use_fates, use_fates_sp, use_polygonal_tundra
   use elm_varcon     , only : namep, namec, namel, nameg
   use decompMod      , only : bounds_type, ldecomp
   use GridcellType   , only : grc_pp
@@ -22,7 +22,7 @@ module initGridCellsMod
   use ColumnType     , only : col_pp                
   use VegetationType , only : veg_pp                
   use initSubgridMod , only : elm_ptrs_compdown, elm_ptrs_check
-  use initSubgridMod , only : add_topounit, add_landunit, add_column, add_patch
+  use initSubgridMod , only : add_topounit, add_landunit, add_polygon_landunit, add_column, add_patch
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -237,7 +237,9 @@ contains
        ! By putting this check within the loop over clumps, we ensure that (for example)
        ! if a clump is responsible for landunit L, then that same clump is also
        ! responsible for all columns and pfts in L.
+       !$OMP CRITICAL
        call elm_ptrs_check(bounds_clump)
+       !$OMP END CRITICAL
 
        ! Set veg_pp%wtlunit, veg_pp%wtgcell and col_pp%wtgcell
        call compute_higher_order_weights(bounds_clump)
@@ -254,6 +256,7 @@ contains
     !
     ! !USES
     use elm_varsur , only : wt_tunit, elv_tunit, slp_tunit, asp_tunit, num_tunit_per_grd 
+    use elm_varctl , only : use_IM2_hillslope_hydrology
     use topounit_varcon   , only : max_topounits, has_topounit 
     ! !ARGUMENTS
     integer, intent(in) :: gdc
@@ -263,6 +266,8 @@ contains
     integer :: topounit, ntopos,topo_ind, num_topo_tmp,tmp_tpu
     real(r8) :: wttopounit2gridcell, elv, slp                  ! topounit weight on gridcell, elevation and slope
     integer :: asp                                             ! aspect
+    integer :: t1, t2, begt, endt, dn_index, min_index         ! local topounit indexing
+    real(r8):: t1_elev, t2_elev, min_elev, dn_elev             ! for finding downhill neighbor
     logical :: is_tpu_active                                   ! Check if topounit is active
      
     tmp_tpu = num_tunits_per_grd       ! Actual number of topounits per grid
@@ -271,6 +276,9 @@ contains
     else 
        ntopos = max_topounits
     endif
+
+    begt = ti+1
+    endt = begt + ntopos - 1
     
     do topounit = 1, ntopos                    ! use actual/valid # of topounits per grid intead of max_topounits
        if (max_topounits == 1) then
@@ -291,6 +299,34 @@ contains
        topo_ind = topounit
        call add_topounit(ti=ti, gi=gdc, wtgcell=wttopounit2gridcell, elv=elv, slp=slp, asp=asp,topo_ind=topo_ind,is_tpu_active = is_tpu_active)
     end do
+
+    ! Loop through topounits again to find its nearest downhill topounit on this gridcell
+    ! part of the IM2 hillslope hydrology implementation
+    if (ntopos > 1 .and. use_IM2_hillslope_hydrology) then
+      ! find the minimum elevation over all topounits on the gridcell
+      min_elev = top_pp%elevation(begt)
+      min_index = begt
+      do t1 = begt+1, endt
+         if (top_pp%elevation(t1) < min_elev) then
+            min_elev = top_pp%elevation(t1)
+            min_index = t1
+         endif
+      end do
+      ! find the closest downhill neighbor for each topounit
+      dn_index = -1  ! value of -1 indicates no downhill neighbor
+      do t1 = begt, endt
+         t1_elev = top_pp%elevation(t1)
+         dn_elev = min_elev
+         do t2 = begt, endt
+            t2_elev = top_pp%elevation(t2)
+            if ((t2_elev < t1_elev) .and. (t2_elev >= dn_elev)) then
+               dn_elev = t2_elev
+               dn_index = t2
+            endif
+         end do
+         top_pp%downhill_ti(t1)=dn_index
+      end do
+   endif
  
   end subroutine set_topounit  
  
@@ -302,9 +338,10 @@ contains
     ! Initialize vegetated landunit with competition
     !
     ! !USES
-    use elm_varsur, only : wt_lunit, wt_nat_patch
+    use elm_varsur, only : wt_lunit, wt_nat_patch, wt_polygon
     use subgridMod, only : subgrid_get_topounitinfo
     use elm_varpar, only : numpft, maxpatch_pft, numcft, natpft_lb, natpft_ub, natpft_size
+    use landunit_varcon, only: istlowcenpoly, istflatcenpoly, isthighcenpoly, max_non_poly_lunit
     !
     ! !ARGUMENTS:    
     integer , intent(in)    :: ltype             ! landunit type
@@ -317,11 +354,12 @@ contains
     logical , intent(in)    :: setdata           ! set info or just compute
     !
     ! !LOCAL VARIABLES:
-    integer  :: m,tgi                                ! index
+    integer  :: m,tgi,z                          ! index
     integer  :: npfts                            ! number of pfts in landunit
     integer  :: pitype                           ! patch itype
     real(r8) :: wtlunit2topounit                 ! landunit weight on topounit
     real(r8) :: p_wt                             ! patch weight (0-1)
+    real(r8) :: wtpoly2lndunit                   ! weight of polygon type wrt nat. veg. landunit
     !------------------------------------------------------------------------
 
     ! Set decomposition properties
@@ -333,6 +371,13 @@ contains
     call subgrid_get_topounitinfo(ti, gi,tgi=topo_ind, nveg=npfts)
     wtlunit2topounit = wt_lunit(gi,topo_ind, ltype)
 
+    ! for polygonal tundra, we need to adjust the weight of the landunit as
+    ! this wtlunit2topounit now corresponds to 4 landunits:
+    ! a) natural vegetation, no polygonal tundra
+    ! b) natural vegetation, high centered polygons
+    ! c) natural vegetation, flat centered polygons
+    ! d) natural vegetation, low centered polygons
+
     ! For FATES: the total number of patches may not match what is in the surface
     ! file, and therefor the weighting can't be used. The weightings in
     ! wt_nat_patch may be meaningful (like with fixed biogeography), but they
@@ -342,18 +387,41 @@ contains
     ! by using said mapping table
     
     if (npfts > 0) then
+      ! do standard veg landunit first
        call add_landunit(li=li, ti=ti, ltype=ltype, wttopounit=wtlunit2topounit)
        
        ! Assume one column on the landunit
-       call add_column(ci=ci, li=li, ctype=1, wtlunit=1.0_r8)
+       call add_column(ci=ci, li=li, ctype=1, wtlunit=1.0_r8, is_soil=.true.)
        do m = natpft_lb,natpft_ub
           if(use_fates .and. .not.use_fates_sp)then
              p_wt = 1.0_r8/real(natpft_size,r8)
           else
              p_wt = wt_nat_patch(gi,topo_ind,m)
           end if
-          call add_patch(pi=pi, ci=ci, ptype=m, wtcol=p_wt)
+          call add_patch(pi=pi, ci=ci, ptype=m, wtcol=p_wt, is_on_soil_col=.true.)
        end do
+
+       ! add polygonal landunits and columns if feature turned on
+       ! continue to assume one column per landunit.
+       if (use_polygonal_tundra) then
+         ! loop over polygon types:
+         do z = istlowcenpoly,isthighcenpoly
+           ! get new weight for wttopounit:
+           wtpoly2lndunit = wt_lunit(gi, topo_ind, z) 
+           call add_polygon_landunit(li=li, ti=ti, ltype=ltype, wttopounit=wtpoly2lndunit, polytype = z - max_non_poly_lunit)
+           call add_column(ci=ci, li=li, ctype=1, wtlunit=1.0_r8, is_soil=.true.)
+           ! add patch:
+           do m = natpft_lb,natpft_ub
+             if(use_fates .and. .not.use_fates_sp) then
+               p_wt = 1.0_r8/real(natpft_size,r8)
+             else
+               p_wt = wt_nat_patch(gi,topo_ind,m)
+             end if
+             call add_patch(pi=pi, ci=ci, ptype=m, wtcol=p_wt, is_on_soil_col=.true.)
+           end do
+         end do
+       end if 
+
     end if
 
   end subroutine set_landunit_veg_compete
@@ -391,6 +459,7 @@ contains
     integer  :: npfts                            ! number of pfts in landunit
     real(r8) :: wtlunit2topounit                 ! landunit weight in topounit
     real(r8) :: wtcol2lunit                      ! col weight in landunit
+    logical  :: is_lake_col
     !------------------------------------------------------------------------
 
     ! Set decomposition properties
@@ -399,9 +468,11 @@ contains
     ! gridcell as the new landunit weights on each topounit.
     ! Later, this information will come from new surface datasat.
 
+    is_lake_col = .false.
     if (ltype == istwet) then
        call subgrid_get_topounitinfo(ti, gi,tgi=topo_ind, nwetland=npfts)
     else if (ltype == istdlak) then
+       is_lake_col = .true.
        call subgrid_get_topounitinfo(ti, gi,tgi=topo_ind, nlake=npfts)
     else if (ltype == istice) then 
        call subgrid_get_topounitinfo(ti, gi,tgi=topo_ind, nglacier=npfts)
@@ -454,7 +525,7 @@ contains
           ! and that each column has its own pft
        
           call add_landunit(li=li, ti=ti, ltype=ltype, wttopounit=wtlunit2topounit)
-          call add_column(ci=ci, li=li, ctype=ltype, wtlunit=1.0_r8)
+          call add_column(ci=ci, li=li, ctype=ltype, wtlunit=1.0_r8, is_lake=is_lake_col)
           call add_patch(pi=pi, ci=ci, ptype=noveg, wtcol=1.0_r8)
 
        end if   ! ltype = istice_mec
@@ -492,7 +563,7 @@ contains
     !
     ! !LOCAL VARIABLES:
     integer  :: my_ltype                         ! landunit type for crops
-    integer  :: m,tgi                                ! index
+    integer  :: m,tgi,z                                ! index
     integer  :: npfts                            ! number of pfts in landunit
     real(r8) :: wtlunit2topounit                 ! landunit weight in topounit
     !------------------------------------------------------------------------
@@ -517,14 +588,14 @@ contains
        end if
 
        call add_landunit(li=li, ti=ti, ltype=my_ltype, wttopounit=wtlunit2topounit)
-       
+
        ! Set column and pft properties for this landunit 
        ! (each column has its own pft)
 
        if (create_crop_landunit) then
           do m = cft_lb, cft_ub
-             call add_column(ci=ci, li=li, ctype=((istcrop*100) + m), wtlunit=wt_cft(gi,topo_ind,m))
-             call add_patch(pi=pi, ci=ci, ptype=m, wtcol=1.0_r8)
+             call add_column(ci=ci, li=li, ctype=((istcrop*100) + m), wtlunit=wt_cft(gi,topo_ind,m), is_crop=.true.)
+             call add_patch(pi=pi, ci=ci, ptype=m, wtcol=1.0_r8, is_on_crop_col=.true.)
           end do
        end if
 
@@ -1097,10 +1168,11 @@ contains
     grid_count(:) = 0.d0
     last_lun_type   = -1
     do c = bounds_proc%begc_all, bounds_proc%endc_all
-       g             = col_pp%gridcell(c)
-       if (last_lun_type /= lun_pp%itype(col_pp%landunit(c))) then
+       g = col_pp%gridcell(c)
+       l = col_pp%landunit(c)
+       if (last_lun_type /= lun_pp%itype(l)) then
           grid_count(:) = 0.d0
-          last_lun_type = lun_pp%itype(col_pp%landunit(c))
+          last_lun_type = lun_pp%itype(l)
        endif
        grid_count(g) = grid_count(g) + 1.d0
        col_rank(c)   = grid_count(g)

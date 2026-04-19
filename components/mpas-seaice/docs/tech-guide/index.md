@@ -10,7 +10,7 @@ See complete citations in [References](../references.md).
 
 **E3SM v2 Overview**: Golaz et al., JAMES 2022
 
-**Icepack**: Full documentation for E3SM's version of Icepack can be found in [E3SM's Icepack readthedocs](https://e3sm-icepack.readthedocs.io/en/latest).  The most up-to-date documentation from the CICE Consortium's main Icepack repository is [here](https://cice-consortium-icepack.readthedocs.io/en/main).
+**Icepack**: Full documentation for E3SM's version of Icepack can be found in [E3SM's Icepack readthedocs](https://e3sm-icepack.readthedocs.io/en/latest).  The most [up-to-date documentation from the CICE Consortium's main Icepack repository](https://cice-consortium-icepack.readthedocs.io/en/main) is also available.
 
 A comprehensive paper describing MPAS-seaice is in preparation.
 
@@ -54,15 +54,13 @@ With advanced physics and biogeochemistry (BGC) options, MPAS-Seaice can be conf
 
 ## Column Physics
 
-The Icepack software has replaced the original ``colpkg`` column physics code in MPAS-seaice. The ``config_column_physics_type = 'column_package'`` option is still available but is no longer being supported in MPAS-seaice.
-
 Because of the strong thermal gradients between the (cold) atmosphere and (relatively warm) oceans in polar regions, a large portion of the physics in sea ice models can be described in a vertical column, without reference to neighboring grid cells. MPAS-Seaice shares the same column physics code as CICE through the Icepack library (Hunke et al., 2018), which is maintained by the CICE Consortium. This code includes several options for simulating sea ice thermodynamics, mechanical redistribution (ridging) and associated area and thickness changes. In addition, the model supports a number of tracers, including thickness, enthalpy, ice age, first-year ice area, deformed ice area and volume, melt ponds, snow properties and biogeochemistry.
 
 Icepack is implemented in MPAS-seaice as a git submodule. Icepack consists of three independent parts, the column physics code, the Icepack driver that supports stand-alone testing of the column physics code, and the Icepack scripts that build and test the Icepack model.  E3SM uses only the column physics code, which is called for each ocean grid cell.  Icepack’s own driver and testing scripts are used when preparing new developments to be merged back to the CICE Consortium’s Icepack repository.
 
-Icepack includes sophisticated vertical physics and biogeochemical schemes, which include vertical thermodynamics schemes (Bitz and Lipscomb, 1999; Turner et al., 2013; Turner and Hunke, 2015), melt-pond parameterizations (Flocco et al., 2010; Hunke et al., 2013), a delta-Eddington radiation scheme (Briegleb and Light, 2007; Holland et al., 2012a), schemes for transport in thickness space (Lipscomb, 2001), and representations of mechanical redistribution (Lipscomb et al., 2007).
+Icepack includes sophisticated vertical physics and biogeochemical schemes, which include vertical thermodynamics schemes (Bitz and Lipscomb, 1999; Turner et al., 2013; Turner and Hunke, 2015), melt-pond parameterizations (Flocco et al., 2010; Hunke et al., 2013; Clemens-Sewell et al., in prep), a delta-Eddington radiation scheme (Briegleb and Light, 2007; Holland et al., 2012a), schemes for transport in thickness space (Lipscomb, 2001), and representations of mechanical redistribution (Lipscomb et al., 2007).
 
-Full documentation for E3SM's version of Icepack can be found in [E3SM's Icepack readthedocs](https://e3sm-icepack.readthedocs.io/en/latest).  The most up-to-date documentation from the CICE Consortium's main Icepack repository is [here](https://cice-consortium-icepack.readthedocs.io/en/main).
+Full documentation for E3SM's version of Icepack can be found in [E3SM's Icepack readthedocs](https://e3sm-icepack.readthedocs.io/en/latest).  The most [up-to-date documentation from the CICE Consortium's main Icepack repository](https://cice-consortium-icepack.readthedocs.io/en/main) is also available.
 
 ### Thermodynamics
 
@@ -70,7 +68,7 @@ In its default configuration, MPAS-Seaice uses the “mushy layer” vertical th
 
 ### Melt Ponds
 
-MPAS-seaice uses the level-ice melt pond scheme of Hunke et al. (2013). The ponds are carried as tracers on the level (undeformed) ice area of each thickness category, thus limiting their spatial extent based on the simulated sea ice topography. This limiting is meant to approximate the horizontal drainage of melt water into depressions in ice floes. The ponds evolve according to physically based process descriptions, assuming a thickness-area ratio for changes in pond volume. Melt pond processes include addition of liquid water from rain, melting snow and melting surface ice, drainage of pond water when its weight pushes the ice surface below sea level or when the ice interior becomes permeable, and refreezing of the pond water. If snow falls after a layer of ice has formed on the ponds, the snow may block sunlight from reaching the ponds below. When melt water forms with snow still on the ice, the water is assumed to infiltrate the snow. If there is enough water to fill the air spaces within the snowpack, then the pond becomes visible above the snow, thus decreasing the albedo and ultimately causing the snow to melt faster. The albedo also decreases as snow depth decreases, and thus a thin layer of snow remaining above a pond-saturated layer of snow will have a lower albedo than if the melt water were not present. Level-ice melt ponds are “virtual” in the sense that rain and meltwater is sent to the ocean immediately, and the tracers are only used thereafter to adjust the radiative calculations as if the ponds were present.  The delta-Eddington radiative transfer scheme must be active for this purpose.
+MPAS-seaice uses the level-ice melt pond scheme of Hunke et al. (2013). The ponds are carried as tracers on the level (undeformed) ice area of each thickness category, thus limiting their spatial extent based on the simulated sea ice topography. This limiting is meant to approximate the horizontal drainage of melt water into depressions in ice floes. The ponds evolve according to physically based process descriptions, assuming a thickness-area ratio for changes in pond volume. Melt pond processes include addition of liquid water from rain, melting snow and melting surface ice, drainage of pond water when its weight pushes the ice surface below sea level or when the ice interior becomes permeable, and refreezing of the pond water. If snow falls after a layer of ice has formed on the ponds, the snow may block sunlight from reaching the ponds below. When melt water forms with snow still on the ice, the water is assumed to infiltrate the snow. If there is enough water to fill the air spaces within the snowpack, then the pond becomes visible above the snow, thus decreasing the albedo and ultimately causing the snow to melt faster. The albedo also decreases as snow depth decreases, and thus a thin layer of snow remaining above a pond-saturated layer of snow will have a lower albedo than if the melt water were not present. Level-ice melt ponds are “virtual” in the sense that rain and meltwater is sent to the ocean immediately, and the tracers are only used thereafter to adjust the radiative calculations as if the ponds were present.  The delta-Eddington radiative transfer scheme must be active for this purpose. The "sealvl" pond scheme uses all the same pond physics as the level-ice scheme (with different parameter values), but instead of basing the pond areal coverage on the level-ice fraction, it assumes the topography of each category follows a hypsometric curve that represents the ice surface height relative to sea level, currently assumed to be linear. A third melt pond scheme is available but not tested within E3SM: the "topo" scheme calculates the pond characteristics assuming the ice in all categories within a grid cell is rigid and in hydrostatic equilibrium, and the ponds fill the thinnest categories first using an empirical function to estimate the areal coverage.
 
 ### Radiation
 
@@ -84,7 +82,7 @@ A paper describing the advanced snow physics is in preparation.
 
 ### Biogeochemistry
 
-This section is under construction, pending the full merge of BGC codes in Icepack and the older column physics package.
+Icepack incorporates a comprehensive biogeochemistry component that includes two aerosol options, water isotopes, and a full suite of vertically resolved biogeochemical tracers.  The complexity of the ecosystem can be specified in Icepack’s configuration settings and namelist flags. The biogeochemistry component is thoroughly documented in the Icepack documentation linked above.
 
 ## Coupling of MPAS-seaice within E3SM
 

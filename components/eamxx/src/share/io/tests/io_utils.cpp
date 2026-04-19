@@ -1,13 +1,16 @@
 #include <catch2/catch.hpp>
 
-#include <share/io/scream_io_utils.hpp>
-#include <share/io/scream_io_control.hpp>
-#include <share/util/scream_time_stamp.hpp>
+#include <share/io/eamxx_io_utils.hpp>
+#include <share/io/eamxx_io_control.hpp>
+#include <share/util/eamxx_time_stamp.hpp>
 
 #include <fstream>
 
 TEST_CASE ("find_filename_in_rpointer") {
   using namespace scream;
+
+  constexpr auto AVG = OutputAvgType::Average;
+  constexpr auto INST = OutputAvgType::Instant;
 
   ekat::Comm comm(MPI_COMM_WORLD);
 
@@ -17,21 +20,36 @@ TEST_CASE ("find_filename_in_rpointer") {
   // Create a dummy rpointer
   std::ofstream rpointer ("rpointer.atm");
 
-  rpointer << "foo.r." + t0.to_string() + ".nc\n";
-  rpointer << "bar2.rhist." + t0.to_string() + ".nc\n";
-  rpointer << "bar.rhist." + t0.to_string() + ".nc\n";
+  IOControl foo_c, bar_c, bar2_c;
+  foo_c.frequency  = 3; foo_c.frequency_units  = "nsteps";
+  bar_c.frequency  = 1; bar_c.frequency_units  = "ndays";
+  bar2_c.frequency = 6; bar2_c.frequency_units = "nhours";
+
+  std::string suffix = ".np" + std::to_string(comm.size()) + "." + t0.to_string() + ".nc";
+  std::string foo_fname  = "foo.r.INSTANT.nsteps_x3"     + suffix;
+  std::string bar_fname  = "bar.rhist.AVERAGE.ndays_x1"  + suffix;
+  std::string bar2_fname = "bar.rhist.AVERAGE.nhours_x6" + suffix;
+
+  rpointer << foo_fname<< "\n";
+  rpointer << bar_fname<< "\n";
+  rpointer << bar2_fname << "\n";
   rpointer.close();
 
   // Now test find_filename_in_rpointer with different inputs
+  REQUIRE_THROWS (find_filename_in_rpointer("baz",false,comm,t0,false,AVG)); // missing control (needed for rhist files)
+  REQUIRE_THROWS (find_filename_in_rpointer("baz",false,comm,t0,false,AVG,bar_c)); // wrong prefix
+  REQUIRE_THROWS (find_filename_in_rpointer("bar",false,comm,t1,false,AVG,bar_c)); // wrong timestamp
+  REQUIRE_THROWS (find_filename_in_rpointer("bar",true, comm,t0,false,AVG,bar_c)); // bar is not model restart
+  REQUIRE_THROWS (find_filename_in_rpointer("bar",false,comm,t0,false,INST,bar_c)); // wrong avg type
+  REQUIRE_THROWS (find_filename_in_rpointer("bar",false,comm,t0,false,INST,bar2_c)); // wrong freq specs
+  REQUIRE_THROWS (find_filename_in_rpointer("foo",false,comm,t0,false,INST,foo_c)); // foo is model restart
+  REQUIRE_THROWS (find_filename_in_rpointer("foo",true, comm,t0,false,AVG)); // model restart MUST be INSTANT
+  auto not_found = find_filename_in_rpointer("bar",false,comm,t0,true,INST,bar2_c); // Allowed to not find it
+  REQUIRE (not_found=="");
 
-  REQUIRE_THROWS (find_filename_in_rpointer("baz",false,comm,t0)); // wrong prefix
-  REQUIRE_THROWS (find_filename_in_rpointer("bar",false,comm,t1)); // wrong timestamp
-  REQUIRE_THROWS (find_filename_in_rpointer("bar",true, comm,t0)); // bar is not model restart
-  REQUIRE_THROWS (find_filename_in_rpointer("foo",false,comm,t0)); // foo is model restart
-
-  REQUIRE (find_filename_in_rpointer("bar", false,comm,t0)==("bar.rhist."+t0.to_string()+".nc"));
-  REQUIRE (find_filename_in_rpointer("bar2",false,comm,t0)==("bar2.rhist."+t0.to_string()+".nc"));
-  REQUIRE (find_filename_in_rpointer("foo", true, comm,t0)==("foo.r."+t0.to_string()+".nc"));
+  REQUIRE (find_filename_in_rpointer("bar",false,comm,t0,false,AVG,bar_c)==bar_fname);
+  REQUIRE (find_filename_in_rpointer("bar",false,comm,t0,false,AVG,bar2_c)==bar2_fname);
+  REQUIRE (find_filename_in_rpointer("foo",true, comm,t0)==foo_fname);
 }
 
 TEST_CASE ("io_control") {
@@ -125,5 +143,84 @@ TEST_CASE ("io_control") {
     REQUIRE (not control.is_write_step(t1));
     REQUIRE (control.is_write_step(t2));
     REQUIRE (not control.is_write_step(t3));
+  }
+}
+
+TEST_CASE ("parse_cf_time_units") {
+  using namespace scream;
+
+  // Reference timestamp to use in comparisons
+  util::TimeStamp ts_date_only ({2010,1,1},{0,0,0});
+  util::TimeStamp ts_with_hms  ({2010,1,1},{12,30,45});
+  util::TimeStamp ts_eamxx_fmt ({2010,1,1},{0,0,0}); // YYYY-MM-DD-SSSSS format
+
+  std::string filename = "foo";
+
+  SECTION ("seconds") {
+    auto [ts, mult] = parse_cf_time_units("seconds since 2010-01-01",filename);
+    REQUIRE (ts == ts_date_only);
+    REQUIRE (mult == 1);
+  }
+
+  SECTION ("second") {
+    auto [ts, mult] = parse_cf_time_units("second since 2010-01-01",filename);
+    REQUIRE (ts == ts_date_only);
+    REQUIRE (mult == 1);
+  }
+
+  SECTION ("minutes") {
+    auto [ts, mult] = parse_cf_time_units("minutes since 2010-01-01",filename);
+    REQUIRE (ts == ts_date_only);
+    REQUIRE (mult == 60);
+  }
+
+  SECTION ("hours") {
+    auto [ts, mult] = parse_cf_time_units("hours since 2010-01-01",filename);
+    REQUIRE (ts == ts_date_only);
+    REQUIRE (mult == 3600);
+  }
+
+  SECTION ("days") {
+    auto [ts, mult] = parse_cf_time_units("days since 2010-01-01",filename);
+    REQUIRE (ts == ts_date_only);
+    REQUIRE (mult == 86400);
+  }
+
+  SECTION ("date with time HH:MM:SS") {
+    auto [ts, mult] = parse_cf_time_units("days since 2010-01-01 12:30:45",filename);
+    REQUIRE (ts == ts_with_hms);
+    REQUIRE (mult == 86400);
+  }
+
+  SECTION ("date with T separator") {
+    auto [ts, mult] = parse_cf_time_units("hours since 2010-01-01T12:30:45",filename);
+    REQUIRE (ts == ts_with_hms);
+    REQUIRE (mult == 3600);
+  }
+
+  SECTION ("date with time HH:MM only") {
+    util::TimeStamp ts_hm ({2010,1,1},{12,30,0});
+    auto [ts, mult] = parse_cf_time_units("days since 2010-01-01 12:30",filename);
+    REQUIRE (ts == ts_hm);
+    REQUIRE (mult == 86400);
+  }
+
+  SECTION ("eamxx internal format YYYY-MM-DD-SSSSS") {
+    // 2010-01-01-00000 is EAMxx's internal format
+    auto [ts, mult] = parse_cf_time_units("days since 2010-01-01-00000",filename);
+    REQUIRE (ts == ts_eamxx_fmt);
+    REQUIRE (mult == 86400);
+  }
+
+  SECTION ("error: missing 'since' separator") {
+    REQUIRE_THROWS (parse_cf_time_units("days 2010-01-01",filename));
+  }
+
+  SECTION ("error: unsupported unit") {
+    REQUIRE_THROWS (parse_cf_time_units("weeks since 2010-01-01",filename));
+  }
+
+  SECTION ("error: invalid date") {
+    REQUIRE_THROWS (parse_cf_time_units("days since not-a-date",filename));
   }
 }

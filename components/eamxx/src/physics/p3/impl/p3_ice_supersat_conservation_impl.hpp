@@ -13,19 +13,28 @@ namespace p3 {
 
 template<typename S, typename D>
 KOKKOS_FUNCTION
-void Functions<S,D>::ice_supersat_conservation(Spack& qv2qi_vapdep_tend, Spack& qv2qi_nucleat_tend, const Spack& cld_frac_i, const Spack& qv, const Spack& qv_sat_i, const Spack& latent_heat_sublim, const Spack& t_atm, const Real& dt, const Spack& qi2qv_sublim_tend, const Spack& qr2qv_evap_tend, const Smask& context)
+void Functions<S,D>::ice_supersat_conservation(Pack& qv2qi_vapdep_tend, Pack& qv2qi_nucleat_tend, Pack& qinuc_cnt, const Pack& cld_frac_i, const Pack& qv, const Pack& qv_sat_i, const Pack& t_atm, const Real& dt, const Pack& qi2qv_sublim_tend, const Pack& qr2qv_evap_tend, const bool& use_hetfrz_classnuc, const Mask& context)
 {
   constexpr Scalar qsmall = C::QSMALL;
-  constexpr Scalar cp     = C::CP;
-  constexpr Scalar rv     = C::RH2O;
+  constexpr Scalar cp     = C::CP.value;
+  constexpr Scalar rv     = C::RH2O.value;
+  constexpr Scalar latvap = C::LatVap.value;
+  constexpr Scalar latice = C::LatIce.value;
+  constexpr Scalar latsublim2 = (latvap+latice)*(latvap+latice);
 
-  const auto qv_sink = qv2qi_vapdep_tend + qv2qi_nucleat_tend; // in [kg/kg] cell-avg values
+  Pack qv_sink;
+  if(use_hetfrz_classnuc){
+      qv_sink = qv2qi_vapdep_tend + qv2qi_nucleat_tend + qinuc_cnt; // in [kg/kg] cell-avg values
+  }
+  else{
+      qv_sink = qv2qi_vapdep_tend + qv2qi_nucleat_tend; // in [kg/kg] cell-avg values
+  }
 
   const auto mask = qv_sink > qsmall && cld_frac_i > 1e-20 && context;
   if (mask.any()) {
     // --- Available water vapor for deposition/nucleation
     auto qv_avail = (qv + (qi2qv_sublim_tend+qr2qv_evap_tend)*dt - qv_sat_i) /
-      (1 + square(latent_heat_sublim)*qv_sat_i / (cp*rv*square(t_atm)) ) / dt;
+      (1 + latsublim2*qv_sat_i / (cp*rv*square(t_atm)) ) / dt;
 
     // --- Only excess water vapor can be limited
     qv_avail = max(qv_avail, 0);
@@ -33,6 +42,9 @@ void Functions<S,D>::ice_supersat_conservation(Spack& qv2qi_vapdep_tend, Spack& 
     const auto sink_gt_avail = qv_sink > qv_avail && mask;
     if (sink_gt_avail.any()) {
       const auto fract = qv_avail / qv_sink;
+      if(use_hetfrz_classnuc){
+         qinuc_cnt.set(sink_gt_avail, qinuc_cnt * fract);
+      }
       qv2qi_nucleat_tend.set(sink_gt_avail, qv2qi_nucleat_tend * fract);
       qv2qi_vapdep_tend.set(sink_gt_avail, qv2qi_vapdep_tend * fract);
     }

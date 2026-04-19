@@ -2,13 +2,10 @@
 
 #include "shoc_unit_tests_common.hpp"
 #include "shoc_functions.hpp"
-#include "shoc_functions_f90.hpp"
-#include "physics/share/physics_constants.hpp"
-#include "share/scream_types.hpp"
+#include "shoc_test_data.hpp"
+#include "share/physics/physics_constants.hpp"
+#include "share/core/eamxx_types.hpp"
 
-#include "ekat/ekat_pack.hpp"
-#include "ekat/util/ekat_arch.hpp"
-#include "ekat/kokkos/ekat_kokkos_utils.hpp"
 
 #include <algorithm>
 #include <array>
@@ -37,7 +34,7 @@ struct UnitWrap::UnitTest<D>::TestShocPdfComputeTemp {
     // Input liquid water potential temperature [K]
     static constexpr Real thl1 = 305;
     // Input basepressure [Pa]
-    static constexpr Real basepres = 100000;
+    static constexpr Real basepres = C::P0.value;
     // Input value of pval [Pa]
     Real pval = 110000;
 
@@ -55,16 +52,15 @@ struct UnitWrap::UnitTest<D>::TestShocPdfComputeTemp {
 
     // Fill in data
     SDS.thl1 = thl1;
-    SDS.basepres = basepres;
     SDS.pval = pval;
 
-    Int num_tests = SDS.pval/abs(presincr);
+    Int num_tests = SDS.pval/std::abs(presincr);
 
     REQUIRE(num_tests > 1);
     REQUIRE(presincr < 0);
     // Make sure our starting pressure is greater than
     //  basepres just so we test a range
-    REQUIRE(SDS.pval > SDS.basepres);
+    REQUIRE(SDS.pval > basepres);
 
     for (Int s = 0; s < num_tests; ++s){
 
@@ -81,11 +77,11 @@ struct UnitWrap::UnitTest<D>::TestShocPdfComputeTemp {
 
       // If pressure is greater than basepressure then
       //  make sure that temperature is greater than thetal
-      if (SDS.pval > SDS.basepres){
+      if (SDS.pval > basepres){
         REQUIRE(SDS.tl1 > SDS.thl1);
       }
       // otherwise temperature should be less than thetal
-      else if(SDS.pval < SDS.basepres){
+      else if(SDS.pval < basepres){
         REQUIRE(SDS.tl1 < SDS.thl1);
       }
       // otherwise if they are equal the temperatures

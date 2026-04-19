@@ -23,7 +23,7 @@ module semoab_mod
   use seq_comm_mct,  only: MHPGID      !  app id on moab side, for PGx style mesh, uniform from se
   use seq_comm_mct,  only: atm_pg_active ! turn it on when PG style mesh active
 
-  use dyn_grid,      only: fv_nphys ! phys grid mesh will be replicated too
+  !use dyn_grid,      only: fv_nphys ! phys grid mesh will be replicated too
   use gllfvremap_mod,         only:  gfr_f_get_corner_latlon
 
   use control_mod, only :  west, east, south, north  ! 1, 2, 3, 4
@@ -76,7 +76,7 @@ contains
 
   end function search_in
 
-  subroutine create_moab_meshes(par, elem)
+  subroutine create_moab_meshes(par, elem, fv_nphys)
 
     use ISO_C_BINDING
     use iMOAB, only: iMOAB_CreateVertices, iMOAB_WriteMesh, iMOAB_CreateElements, &
@@ -86,6 +86,7 @@ contains
 
     type (element_t), intent(inout) :: elem(:)
     type (parallel_t)      , intent(in) :: par
+    integer   , intent(in)             :: fv_nphys
 
     integer ierr, i, j, ie, iv, block_ID, k, numvals
     integer icol, irow, je, linx ! local indices in fine el connect
@@ -400,9 +401,11 @@ contains
 !     allocate(moab_vert_coords(3*idx) )
      if ( nelemd > 0 ) then 
        allocate(vdone_c(nverts_c))
-       vdone_c = 0;
-       currentval = gdofv( indx(1)) ! start over to identify coordinates of the vertices
+     else
+       allocate(vdone_c(1)) ! will be passed to iMOAB_ResolveSharedEnts, and compilers are complaining about non-allocated arrays
      endif
+     vdone_c = 0
+     if ( nelemd > 0 ) currentval = gdofv( indx(1)) ! start over to identify coordinates of the vertices
 
      do ix=1,moab_dim_cquads
         i = indx(ix)   ! index in initial array
@@ -529,6 +532,7 @@ contains
        ! first count the number of edges in the coarse mesh;
        ! use euler: v-m+f = 2 => m = v + f - 2
        nedges_c = nverts_c + nelemd - 1 ! could be more, if unconnected regions ?
+       nedges_c = nedges_c + 3 ! assume more than one connected region
        if ( nedges_c < 0 ) nedges_c = 0 ! it cannot be negative
        internal_edges = 0
        boundary_edges = 0

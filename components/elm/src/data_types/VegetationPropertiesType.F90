@@ -43,7 +43,7 @@ module VegetationPropertiesType
      real(r8), pointer :: dsladlai      (:) => null()  ! dSLA/dLAI, projected area basis [m^2/gC]
      real(r8), pointer :: leafcn        (:) => null()  ! leaf C:N (gC/gN)
      real(r8), pointer :: flnr          (:) => null()  ! fraction of leaf N in the Rubisco enzyme (gN Rubisco / gN leaf)
-     real(r8), pointer :: woody         (:) => null()  ! binary flag for woody lifeform (1=woody, 0=not woody)
+     real(r8), pointer :: woody         (:) => null()  ! woody lifeform flag (0 = non-woody, 1 = tree, 2 = shrub)
      real(r8), pointer :: lflitcn       (:) => null()  ! leaf litter C:N (gC/gN)
 #if defined(TAM)
      real(r8), pointer :: froottcn      (:) => null()  ! fine root C:N (gC/gN)
@@ -108,7 +108,7 @@ module VegetationPropertiesType
      real(r8), pointer :: fm_root       (:) => null()  ! fire-related mortality factor for fine roots (0 to 1)
      real(r8), pointer :: fm_lroot      (:) => null()  ! fire-related mortality factor for live roots (0 to 1)
      real(r8), pointer :: fm_droot      (:) => null()  ! fire-related mortality factor for dead roots (0 to 1)
-     real(r8), pointer :: manunitro     (:) => null()  ! fertilizer applied (crop)
+     real(r8), pointer :: manunitro     (:) => null()  ! manure nitrogen applied (crop)
      real(r8), pointer :: fleafcn       (:) => null()  ! C:N during grain fill; leaf (crop)
      real(r8), pointer :: ffrootcn      (:) => null()  ! C:N during grain fill; froot (crop)
      real(r8), pointer :: fstemcn       (:) => null()  ! C:N during grain fill; stem (crop)
@@ -145,7 +145,7 @@ module VegetationPropertiesType
      real(r8), pointer :: lamda_ptase              => null()! critical value that incur biochemical production
      real(r8), pointer :: i_vc(:)          => null()        ! intercept of photosynthesis vcmax ~ leaf n content regression model
      real(r8), pointer :: s_vc(:)          => null()        ! slope of photosynthesis vcmax ~ leaf n content regression model
-     real(r8), pointer :: nsc_rtime(:)     => null()        ! non-structural carbon residence time 
+     real(r8), pointer :: nsc_rtime(:)     => null()        ! non-structural carbon residence time
      real(r8), pointer :: pinit_beta1(:)   => null()        ! shaping parameter for P initialization
      real(r8), pointer :: pinit_beta2(:)   => null()        ! shaping parameter for P initialization
      real(r8), pointer :: alpha_nfix(:)    => null()        ! fraction of fixed N goes directly to plant
@@ -181,6 +181,11 @@ module VegetationPropertiesType
      real(r8), pointer :: needleleaf(:)    => null()   !needleleaf or broadleaf
      real(r8), pointer :: nfixer(:)        => null()   !cablity of nitrogen fixation from atm. N2
 
+     ! NGEE Arctic snow-vegetation interactions
+     real(r8), pointer :: bendresist(:)       ! vegetation resistance to bending under snow loading, 0 to 1 (e.g., Liston and Hiemstra 2011)
+     real(r8), pointer :: vegshape(:)         ! shape parameter to modify shrub burial by snow (1 = parabolic, 2 = hemispheric)
+     real(r8), pointer :: stocking(:)         ! stocking density for pft (stems / hectare)
+     real(r8), pointer :: taper(:)            ! ratio of height:radius_breast_height (woody vegetation allometry)
 
    contains
    procedure, public :: Init => veg_vp_init
@@ -228,8 +233,10 @@ contains
     use pftvarcon , only : froot_long, fr_flab, fr_fcel, fr_flig
     use pftvarcon , only : frootcn, frootcp
 #endif
-    ! new properties for flexible PFT
+    ! new properties for flexible PFT (NGEE Arctic IM4)
     use pftvarcon , only : climatezone, nonvascular, graminoid, iscft,needleleaf, nfixer
+    ! snow/vegetation interactions (NGEE Arctic IM3)
+    use pftvarcon , only : bendresist, stocking, vegshape, taper
     !
 
     class (vegetation_properties_type) :: this
@@ -392,6 +399,11 @@ contains
     allocate( this%needleleaf(0:numpft))                         ; this%needleleaf(:)            =spval
     allocate( this%nfixer(0:numpft))                             ; this%nfixer(:)                =spval
     ! -----------------------------------------------------------------------------------------------------------
+    ! NGEE Arctic snow-vegetation interactions
+    allocate(this%bendresist(0:numpft))                          ; this%bendresist(:)            =spval
+    allocate(this%vegshape(0:numpft))                            ; this%vegshape(:)              =spval
+    allocate(this%stocking(0:numpft))                            ; this%stocking(:)              =spval
+    allocate(this%taper(0:numpft))                               ; this%taper(:)                 =spval
 
     do m = 0,numpft
 
@@ -582,6 +594,13 @@ contains
     this%lamda_ptase   = lamda_ptase
     this%tc_stress     = tc_stress
 
+    ! NGEE Arctic - snow/vegetation interactions
+    do m = 0, numpft ! RPF - move up to earlier pft loops?
+      this%bendresist(m)  = bendresist(m)
+      this%vegshape(m)    = vegshape(m)
+      this%stocking(m)    = stocking(m)
+      this%taper(m)       = taper(m)
+    end do
   end subroutine veg_vp_init
 
 end module VegetationPropertiesType

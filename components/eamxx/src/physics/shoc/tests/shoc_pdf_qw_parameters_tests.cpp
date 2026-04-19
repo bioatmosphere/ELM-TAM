@@ -2,13 +2,10 @@
 
 #include "shoc_unit_tests_common.hpp"
 #include "shoc_functions.hpp"
-#include "shoc_functions_f90.hpp"
-#include "physics/share/physics_constants.hpp"
-#include "share/scream_types.hpp"
+#include "shoc_test_data.hpp"
+#include "share/physics/physics_constants.hpp"
+#include "share/core/eamxx_types.hpp"
 
-#include "ekat/ekat_pack.hpp"
-#include "ekat/util/ekat_arch.hpp"
-#include "ekat/kokkos/ekat_kokkos_utils.hpp"
 
 #include <algorithm>
 #include <array>
@@ -75,6 +72,8 @@ struct UnitWrap::UnitTest<D>::TestShocQwParameters {
     SDS.w1_2 = w1_2_test1;
     SDS.skew_w = Skew_w_test1;
     SDS.a = a_test1;
+    SDS.rt_tol = 0;
+    SDS.w_thresh = 0;
 
     // Verify input is physical
     REQUIRE(SDS.sqrtw2 >= 0);
@@ -85,15 +84,15 @@ struct UnitWrap::UnitTest<D>::TestShocQwParameters {
     REQUIRE(SDS.w1_1 > 0);
     REQUIRE(SDS.w1_2 < 0);
     if (SDS.skew_w > 0){
-      REQUIRE(abs(SDS.w1_1) > abs(SDS.w1_2));
+      REQUIRE(std::abs(SDS.w1_1) > std::abs(SDS.w1_2));
       REQUIRE(SDS.a < 0.5);
     }
     else if (SDS.skew_w < 0){
-      REQUIRE(abs(SDS.w1_1) < abs(SDS.w1_2));
+      REQUIRE(std::abs(SDS.w1_1) < std::abs(SDS.w1_2));
       REQUIRE(SDS.a > 0.5);
     }
     else if (SDS.skew_w == 0){
-      REQUIRE(abs(SDS.w1_1) == abs(SDS.w1_2));
+      REQUIRE(std::abs(SDS.w1_1) == std::abs(SDS.w1_2));
       REQUIRE(SDS.a == 0);
     }
 
@@ -101,7 +100,7 @@ struct UnitWrap::UnitTest<D>::TestShocQwParameters {
     shoc_assumed_pdf_qw_parameters(SDS);
 
     // Save absolute difference between the two gaussian moistures
-    Real qwgaus_diff_result1 = abs(qvconv*SDS.qw1_2 - qvconv*SDS.qw1_1);
+    Real qwgaus_diff_result1 = std::abs(qvconv*SDS.qw1_2 - qvconv*SDS.qw1_1);
 
     // Now laod up value for the large wqwsec test
     SDS.wqwsec = wqwsec_large;
@@ -110,7 +109,7 @@ struct UnitWrap::UnitTest<D>::TestShocQwParameters {
     shoc_assumed_pdf_qw_parameters(SDS);
 
     // Save absolute difference between the two gaussian temps
-    Real qwgaus_diff_result2 = abs(qvconv*SDS.qw1_2 - qvconv*SDS.qw1_1);
+    Real qwgaus_diff_result2 = std::abs(qvconv*SDS.qw1_2 - qvconv*SDS.qw1_1);
 
     // Now check the result
     REQUIRE(qwgaus_diff_result2 > qwgaus_diff_result1);

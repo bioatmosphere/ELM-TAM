@@ -9,7 +9,7 @@ module surfrdMod
   use shr_kind_mod    , only : r8 => shr_kind_r8
   use shr_log_mod     , only : errMsg => shr_log_errMsg
   use abortutils      , only : endrun
-  use elm_varpar      , only : nlevsoifl, numpft, numcft
+  use elm_varpar      , only : numpft, numcft
   use landunit_varcon , only : numurbl
   use elm_varcon      , only : grlnd
   use elm_varctl      , only : iulog, scmlat, scmlon, single_column, firrig_data
@@ -20,11 +20,6 @@ module surfrdMod
   use ncdio_pio       , only : ncd_io, check_var, ncd_inqfdims, check_dim, ncd_inqdid, ncd_inqdlen
   use pio
 
-#ifdef HAVE_MOAB
-  use mct_mod         , only : mct_gsMap
-  use decompMod       , only : get_elmlevel_gsmap
-  ! use spmdMod         , only : iam  ! rank on the land communicator
-#endif
   use spmdMod                         
   use topounit_varcon , only : max_topounits, has_topounit  
 
@@ -35,12 +30,13 @@ module surfrdMod
   !
   ! !PUBLIC MEMBER FUNCTIONS:
   public :: surfrd_get_globmask  ! Reads global land mask (needed for setting domain decomp)
-  public :: surfrd_get_grid      ! Read grid/ladnfrac data into domain (after domain decomp)
+  public :: surfrd_get_grid      ! Read grid/landfrac data into domain (after domain decomp)
   public :: surfrd_get_topo      ! Read grid topography into domain (after domain decomp)
   public :: surfrd_get_data      ! Read surface dataset and determine subgrid weights
   public :: surfrd_get_grid_conn ! Reads grid connectivity information from domain file
   public :: surfrd_topounit_data ! Read topounit physical properties
   public :: surfrd_get_topo_for_solar_rad    ! Read topography dataset for TOP solar radiation parameterization
+  public :: surfrd_finetop_data  ! Read topography dataset for fineTOP parameterization
   !
   ! !PRIVATE MEMBER FUNCTIONS:
   private :: surfrd_special             ! Read the special landunits
@@ -184,11 +180,6 @@ contains
 
     ! pflotran:beg-----------------------------
     integer :: j, np, nv
-#ifdef HAVE_MOAB
-    type(mct_gsMap),  pointer :: gsMap
-    integer :: i, iv , iseg, ig, local ! ni, nj, nv, nseg, global ig
-
-#endif
 
     ! pflotran:end-----------------------------
     character(len=32) :: subname = 'surfrd_get_grid'     ! subroutine name
@@ -258,59 +249,6 @@ contains
 
        end if
        ! pflotran:end-----------------------------------------------
-
-#ifdef HAVE_MOAB
-       ! read xv and yv for MOAB to learn mesh verticies
-       if (ldomain%nv>=3 ) then
-          call get_elmlevel_gsmap (grlnd, gsMap)
-          allocate(rdata3d(nv,ni,nj))  ! transpose from c, as this is fortran
-          vname = 'xv'
-          ! this should be improved in a distributed read, that does not use full grid ni * nj * nv 720*360*4*8 ~ 8Mb
-          call ncd_io(ncid=ncid, varname=trim(vname), data=rdata3d, flag='read', readvar=readvar)
-          if (.not. readvar) call endrun( msg=trim(subname)//' ERROR: xv  NOT on file'//errMsg(__FILE__, __LINE__))
-          ! fill up the ldomain%mblonv(begg:endg, 1:nv) array
-          local = begg
-          do iseg = 1, gsMap%ngseg
-             if (gsMap%pe_loc(iseg) .eq. iam) then
-                do ig = gsMap%start(iseg), gsMap%start(iseg) + gsMap%length(iseg) - 1
-                   j = (ig-1)/ni + 1
-                   i = ig - ni*(j-1)
-                   do iv = 1, nv
-                      if (local .le. endg) then
-                         ldomain%mblonv(local, iv ) = rdata3d(iv, i, j)
-                      else
-                         write (iulog, *), 'OVERFLOW', iseg, gsMap%pe_loc(iseg), gsMap%start(iseg), gsMap%length(iseg), local
-                      endif
-                   enddo
-                   local = local + 1
-                enddo
-             endif
-          enddo
-          ! repeat for mblatv
-          vname = 'yv'
-          call ncd_io(ncid=ncid, varname=trim(vname), data=rdata3d, flag='read', readvar=readvar)
-          if (.not. readvar) call endrun( msg=trim(subname)//' ERROR: yv  NOT on file'//errMsg(__FILE__, __LINE__))
-          ! fill up the ldomain%lonv(begg:endg, 1:nv) array
-          local = begg
-          do iseg = 1, gsMap%ngseg
-             if (gsMap%pe_loc(iseg) .eq. iam) then
-                do ig = gsMap%start(iseg), gsMap%start(iseg) + gsMap%length(iseg) - 1
-                   j = (ig-1)/ni + 1
-                   i = ig - ni*(j-1)
-                   do iv = 1, nv
-                       if (local .le. endg) then
-                          ldomain%mblatv(local, iv ) = rdata3d(iv, i, j)
-                       endif
-                   enddo
-                   local = local + 1
-                enddo
-             endif
-          enddo
-          ! deallocate what is not needed anymore (for half degree land model, ~8Mb)
-          deallocate(rdata3d)
-
-       end if
-#endif
     else
        call ncd_io(ncid=ncid, varname= 'AREA', flag='read', data=ldomain%area, &
             dim1name=grlnd, readvar=readvar)
@@ -732,7 +670,6 @@ contains
        call endrun(msg=errMsg(__FILE__, __LINE__))
     end if
     call domain_clean(surfdata_domain)
-
     ! Obtain special landunit info
 
     call surfrd_special(begg, endg, ncid, ldomain%ns,ldomain%num_tunits_per_grd)
@@ -776,7 +713,6 @@ contains
     ! !LOCAL VARIABLES:
     integer  :: n,nl,nurb,g, t,tm,ti                ! indices
     integer  :: dimid,varid                ! netCDF id's
-    real(r8) :: nlevsoidata(nlevsoifl)
     logical  :: found                      ! temporary for error check
     integer  :: nindx                      ! temporary for error check
     integer  :: ier                        ! error status
@@ -814,7 +750,6 @@ contains
     allocate(pctglc_mec_tot(begg:endg,1:max_topounits))
     allocate(pctspec(begg:endg,1:max_topounits))
     
-    call check_dim(ncid, 'nlevsoi', nlevsoifl)
 
        ! Obtain non-grid surface properties of surface dataset other than percent pft
 
@@ -1131,12 +1066,13 @@ contains
     ! Determine weight arrays for non-dynamic landuse mode
     !
     ! !USES:
-    use elm_varctl      , only : create_crop_landunit, use_fates
+    use elm_varctl      , only : create_crop_landunit, use_fates, use_polygonal_tundra
     use elm_varctl      , only : irrigate
     use elm_varpar      , only : surfpft_lb, surfpft_ub, surfpft_size, cft_lb, cft_ub, cft_size
     use elm_varpar      , only : crop_prog
-    use elm_varsur      , only : wt_lunit, wt_nat_patch, wt_cft, fert_cft, fert_p_cft
+    use elm_varsur      , only : wt_lunit, wt_nat_patch, wt_cft, fert_cft, fert_p_cft, wt_polygon
     use landunit_varcon , only : istsoil, istcrop
+    use landunit_varcon , only : istlowcenpoly, ilowcenpoly, istflatcenpoly, iflatcenpoly, isthighcenpoly, ihighcenpoly
     use pftvarcon       , only : nc3crop, nc3irrig, npcropmin
     use pftvarcon       , only : ncorn, ncornirrig, nsoybean, nsoybeanirrig
     use pftvarcon       , only : nscereal, nscerealirrig, nwcereal, nwcerealirrig
@@ -1175,7 +1111,28 @@ contains
     call ncd_io(ncid=ncid, varname='PCT_NATVEG', flag='read', data=arrayl, &
          dim1name=grlnd, readvar=readvar)
     if (.not. readvar) call endrun( msg=' ERROR: PCT_NATVEG NOT on surfdata file'//errMsg(__FILE__, __LINE__))
-    wt_lunit(begg:endg,1:max_topounits,istsoil) = arrayl(begg:endg,1:max_topounits) 
+    wt_lunit(begg:endg,1:max_topounits,istsoil) = arrayl(begg:endg,1:max_topounits)
+
+    if (use_polygonal_tundra) then
+      call ncd_io(ncid=ncid, varname='PCT_HCP', flag='read', data=arrayl, &
+         dim1name=grlnd, readvar=readvar)
+      if (.not. readvar) call endrun( msg=' ERROR: use_polygonal_tundra = .true., but PCT_HCP NOT on surfdata file'//errMsg(__FILE__, __LINE__))
+      wt_polygon(begg:endg,1:max_topounits,ihighcenpoly) = arrayl(begg:endg,1:max_topounits)
+
+      call ncd_io(ncid=ncid, varname='PCT_FCP', flag='read', data=arrayl, &
+         dim1name=grlnd, readvar=readvar)
+      if (.not. readvar) call endrun( msg=' ERROR: use_polygonal_tundra = .true., but PCT_FCP NOT on surfdata file'//errMsg(__FILE__, __LINE__))
+      wt_polygon(begg:endg,1:max_topounits,iflatcenpoly) = arrayl(begg:endg,1:max_topounits)
+
+      call ncd_io(ncid=ncid, varname='PCT_LCP', flag='read', data=arrayl, &
+         dim1name=grlnd, readvar=readvar)
+      if (.not. readvar) call endrun( msg=' ERROR: use_polygonal_tundra = .true., but PCT_LCP NOT on surfdata file'//errMsg(__FILE__, __LINE__))
+      wt_polygon(begg:endg,1:max_topounits,ilowcenpoly) = arrayl(begg:endg,1:max_topounits)
+    else
+      wt_polygon(begg:endg,1:max_topounits,ilowcenpoly:ihighcenpoly) = 0._r8
+    endif
+
+    ! add two other types
 
     call ncd_io(ncid=ncid, varname='PCT_CROP', flag='read', data=arrayl, &
          dim1name=grlnd, readvar=readvar)
@@ -1200,7 +1157,7 @@ contains
     else if ( (.not. cft_dim_exists) .and. (.not. create_crop_landunit) )then
 
        ! Format where crop is part of the natural veg. landunit
-       if ( masterproc ) write(iulog,*) "WARNING: The PFT format is an unsupported format that will be removed in th future!"
+       if ( masterproc ) write(iulog,*) "WARNING: The PFT format is an unsupported format that will be removed in the future!"
        call surfrd_pftformat( begg, endg, ncid )
 
     else if ( cft_dim_exists .and. .not. create_crop_landunit )then
@@ -1247,6 +1204,7 @@ contains
     end if
     wt_lunit(begg:endg,:,istsoil) = wt_lunit(begg:endg,:,istsoil) / 100._r8
     wt_lunit(begg:endg,:,istcrop) = wt_lunit(begg:endg,:,istcrop) / 100._r8
+    wt_polygon(begg:endg,:,:) = wt_polygon(begg:endg,:,:) / 100._r8
     wt_nat_patch(begg:endg,:,:)   = wt_nat_patch(begg:endg,:,:) / 100._r8
     !call check_sums_equal_1_3d(wt_nat_patch, begg, 'wt_nat_patch', subname,ntpu)
     call check_sums_equal_1_3d(wt_nat_patch, begg, 'wt_nat_patch', subname)
@@ -1324,6 +1282,23 @@ contains
        !                 variable to 0 where is_pft_known_to_model = .false.?
        call collapse_crop_var(fert_cft(begg:endg,:,:), begg, endg)
        call collapse_crop_var(fert_p_cft(begg:endg,:,:), begg, endg)
+    end if
+
+    if (use_polygonal_tundra) then
+      ! adjust wt_lunit(:,:,istsoil) for polygonal fraction:
+      do nl = begg,endg
+        do t = 1,max_topounits
+          wt_lunit(nl,t,istlowcenpoly) = wt_lunit(nl,t,istsoil) * wt_polygon(nl,t,ilowcenpoly)
+          wt_lunit(nl,t,istflatcenpoly) = wt_lunit(nl,t,istsoil) * wt_polygon(nl,t,iflatcenpoly)
+          wt_lunit(nl,t,isthighcenpoly) = wt_lunit(nl,t,istsoil) * wt_polygon(nl,t,ihighcenpoly)
+          wt_lunit(nl,t,istsoil) = wt_lunit(nl,t,istsoil) - sum(wt_lunit(nl,t,istlowcenpoly:isthighcenpoly))
+          ! check to make sure istsoil weight is still positive:
+          if (wt_lunit(nl,t,istsoil) .lt. 0_r8) then
+            call endrun(msg='ERROR:Polygonal tundra fraction > 100% in surface file'//&
+                                   errMsg(__FILE__, __LINE__))
+          end if
+        end do
+      end do
     end if
 
   end subroutine surfrd_veg_all
@@ -1557,7 +1532,6 @@ contains
     call getfil( lfsurdat, locfn, 0 )
     call ncd_pio_openfile (ncid, trim(locfn), 0)
 	
-    !call check_dim(ncid, 'nlevsoi', nlevsoifl)
     call check_var(ncid=ncid, varname='MaxTopounitElv', vardesc=vardesc, readvar=readvar)
     if (readvar) then
        call ncd_io(ncid=ncid, varname='MaxTopounitElv', flag='read', data=maxTopoElv, &
@@ -1707,6 +1681,7 @@ contains
     call ncd_io(ncid=ncid, varname='STDEV_ELEV', flag='read', data=domain%stdev_elev, &
          dim1name=grlnd, readvar=readvar)
     if (.not. readvar) then
+         if (masterproc) &
          write(iulog,*) trim(subname),' WARNING: STDEV_ELEV  NOT on fsurdat file. Try to use STD_ELEV instead.'
          call ncd_io(ncid=ncid, varname='STD_ELEV', flag='read', data=domain%stdev_elev, &
               dim1name=grlnd, readvar=readvar)
@@ -1730,6 +1705,111 @@ contains
     call ncd_pio_closefile(ncid)
 
   end subroutine surfrd_get_topo_for_solar_rad
+
+
+!-----------------------------------------------------------------------
+  subroutine surfrd_finetop_data(domain,filename)
+! !DESCRIPTION:
+! Read the topography parameters for fineTOP parameterization:
+! Assume domain has already been initialized and read
+
+! !USES:
+    use domainMod , only : domain_type
+    use fileutils , only : getfil
+    use GridcellType, only : grc_pp
+    use elm_varpar  , only : ndir_horizon_angle
+
+! !ARGUMENTS:
+    implicit none
+    type(domain_type),intent(in)    :: domain   ! domain to init
+    character(len=*) ,intent(in)    :: filename ! grid filename
+!
+! !CALLED FROM:
+! subroutine initialize
+!
+! !REVISION HISTORY:
+! Created by Dalei Hao
+!
+! !LOCAL VARIABLES:
+!EOP
+    type(file_desc_t)   :: ncid             ! netcdf file id
+    integer             :: n                ! indices
+    integer             :: ni,nj,ns         ! size of grid on file
+    integer             :: dimid,varid      ! netCDF id's
+    integer             :: ier              ! error status
+    real(r8)            :: eps = 1.0e-12_r8 ! lat/lon error tolerance
+    integer             :: beg,end          ! local beg,end indices
+    logical             :: isgrid2d         ! true => file is 2d lat/lon
+    real(r8),pointer    :: lonc(:),latc(:)  ! local lat/lon
+    character(len=256)  :: locfn            ! local file name
+    logical             :: readvar          ! is variable on file
+    character(len=32)   :: subname = 'surfrd_finetop_data'     ! subroutine name
+!-----------------------------------------------------------------------
+
+    if (masterproc) then
+       if (filename == ' ') then
+          write(iulog,*) trim(subname),' ERROR: filename must be specified '
+          call endrun()
+       else
+          write(iulog,*) 'Attempting to read topography parameters from fsurdat ',trim(filename)
+       endif
+    end if
+
+    call getfil( filename, locfn, 0 )
+    call ncd_pio_openfile (ncid, trim(locfn), 0)
+    call ncd_inqfdims(ncid, isgrid2d, ni, nj, ns)
+
+    if (domain%ns /= ns) then
+       write(iulog,*) trim(subname),' ERROR: fsurdat file mismatch ns',&
+            domain%ns,ns
+       call endrun()
+    endif
+    
+    beg = domain%nbeg
+    end = domain%nend
+
+    allocate(latc(beg:end),lonc(beg:end))
+
+    call ncd_io(ncid=ncid, varname='LONGXY', flag='read', data=lonc, &
+         dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) call endrun( trim(subname)//' ERROR: LONGXY  NOT on fsurdat file' )
+
+    call ncd_io(ncid=ncid, varname='LATIXY', flag='read', data=latc, &
+         dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) call endrun( trim(subname)//' ERROR: LATIXY  NOT on fsurdat file' )
+
+    do n = beg,end
+       if (abs(latc(n)-domain%latc(n)) > eps .or. &
+           abs(lonc(n)-domain%lonc(n)) > eps) then
+          write(iulog,*) trim(subname),' ERROR: fsurdat file mismatch lat,lon',latc(n),&
+               domain%latc(n),lonc(n),domain%lonc(n),eps
+          call endrun()
+       endif
+    enddo
+
+    call check_dim(ncid, 'ndir_horizon_angle', ndir_horizon_angle)
+
+    call ncd_io(ncid=ncid, varname='SLOPE_DEG', flag='read', data=grc_pp%slope_deg, &
+         dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) call endrun( trim(subname)//' ERROR: slope_deg NOT on fsurdat file' )
+    call ncd_io(ncid=ncid, varname='ASPECT_DEG', flag='read', data=grc_pp%aspect_deg, &
+         dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) call endrun( trim(subname)//' ERROR: aspect_deg NOT on fsurdat file' )
+    call ncd_io(ncid=ncid, varname='SKY_VIEW_FACTOR', flag='read', data=grc_pp%sky_view_factor, &
+         dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) call endrun( trim(subname)//' ERROR: sky_view_factor NOT on fsurdat file' )
+    call ncd_io(ncid=ncid, varname='TERRAIN_CONFIG_FACTOR', flag='read', data=grc_pp%terrain_config_factor, &
+         dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) call endrun( trim(subname)//' ERROR: terrain_config_factor NOT on fsurdat file' )
+    call ncd_io(ncid=ncid, varname='HORIZON_ANGLE_DEG', flag='read', data=grc_pp%horizon_angle_deg, &
+         dim1name=grlnd, readvar=readvar)
+    If (.not. readvar) call endrun( trim(subname)//' ERROR: horizon_angle_deg NOT on fsurdat file' )
+
+    deallocate(latc,lonc)
+
+    call ncd_pio_closefile(ncid)
+
+  end subroutine surfrd_finetop_data
 
 
   subroutine surfrd_fates_nocropmod( ncid, begg, endg )

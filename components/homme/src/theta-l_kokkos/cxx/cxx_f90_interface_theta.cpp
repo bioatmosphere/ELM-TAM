@@ -47,7 +47,8 @@ void init_simulation_params_c (const int& remap_alg, const int& limiter_option, 
                                const int& use_cpstar, const int& transport_alg, const int& theta_hydrostatic_mode, const char** test_case,
                                const int& dt_remap_factor, const int& dt_tracer_factor,
                                const double& scale_factor, const double& laplacian_rigid_factor, const int& nsplit, const int& pgrad_correction,
-                               const double& dp3d_thresh, const double& vtheta_thresh, const int& internal_diagnostics_level)
+                               const double& dp3d_thresh, const double& vtheta_thresh, const int& internal_diagnostics_level,
+                               const int& do_3d_turbulence)
 {
 
   // Check that the simulation options are supported. This helps us in the future, since we
@@ -114,7 +115,6 @@ void init_simulation_params_c (const int& remap_alg, const int& limiter_option, 
   params.hypervis_scaling              = hypervis_scaling;
   params.disable_diagnostics           = (bool)disable_diagnostics;
   params.use_moisture                  = (bool)use_moisture;
-  params.moisture = params.use_moisture ? MoistDry::MOIST : MoistDry::DRY; //todo-repo-unification
   params.use_cpstar                    = (bool)use_cpstar;
   params.transport_alg                 = transport_alg;
   params.theta_hydrostatic_mode        = (bool)theta_hydrostatic_mode;
@@ -126,6 +126,7 @@ void init_simulation_params_c (const int& remap_alg, const int& limiter_option, 
   params.dp3d_thresh                   = dp3d_thresh;
   params.vtheta_thresh                 = vtheta_thresh;
   params.internal_diagnostics_level    = internal_diagnostics_level;
+  params.do_3d_turbulence              = (bool)do_3d_turbulence;
 
   if (time_step_type==5) {
     //5 stage, 3rd order, explicit

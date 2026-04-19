@@ -11,11 +11,13 @@ set(CLDFRAC_HEADERS
 
 add_library(cld_fraction ${CLDFRAC_SRCS})
 target_compile_definitions(cld_fraction PUBLIC EAMXX_HAS_CLD_FRACTION)
-target_link_libraries(cld_fraction physics_share scream_share)
+target_link_libraries(cld_fraction eamxx_physics_share scream_share)
 target_compile_options(cld_fraction PUBLIC)
 
-# Add this library to eamxx_physics
-target_link_libraries(eamxx_physics INTERFACE cld_fraction)
+if (TARGET eamxx_physics)
+  # Add this library to eamxx_physics
+  target_link_libraries(eamxx_physics INTERFACE cld_fraction)
+endif()
 
 # Cloud fraction does not yet have a set of unit tests or a BFB test comparing with the F90
 # code.
@@ -24,3 +26,7 @@ target_link_libraries(eamxx_physics INTERFACE cld_fraction)
 # The BFB test will require some amount of work, as the specific ice cloud fraction scheme
 # here is just an option in a more involved F90 subroutine.  Furture work would be to
 # include a BFB test with the F90 code, located in /components/eam/src/physics/cam/cldfrc2m.F90
+
+if (NOT SCREAM_LIB_ONLY)
+  add_subdirectory(cld_frac_net)
+endif()

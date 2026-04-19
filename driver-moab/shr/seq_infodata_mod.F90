@@ -60,6 +60,10 @@ MODULE seq_infodata_mod
   character(len=*), public, parameter :: seq_infodata_orb_variable_year    = 'variable_year'
   character(len=*), public, parameter :: seq_infodata_orb_fixed_parameters = 'fixed_parameters'
 
+  ! For seq_nlmap_mod.
+  integer, public, parameter :: nlmaps_exclude_max_number = 20
+  integer, public, parameter :: nlmaps_exclude_nchar = SHR_KIND_CS
+
   ! InputInfo derived type
 
   type seq_infodata_type
@@ -132,6 +136,7 @@ MODULE seq_infodata_mod
      character(SHR_KIND_CS)  :: aoflux_grid     ! grid for atm ocn flux calc
      integer                 :: cpl_decomp      ! coupler decomp
      character(SHR_KIND_CL)  :: cpl_seq_option  ! coupler sequencing option
+     logical                 :: cpl_compute_maps_online   ! moab maps flag (online computation or offline map reading)
 
      logical                 :: do_budgets      ! do heat/water budgets diagnostics
      logical                 :: do_bgc_budgets  ! do BGC budgets diagnostics
@@ -152,6 +157,7 @@ MODULE seq_infodata_mod
      logical                 :: histaux_l2x1yrg ! cpl writes aux hist files: l2x annual glc forcings
      logical                 :: histaux_l2x     ! cpl writes aux hist files: l2x every c2l comm
      logical                 :: histaux_r2x     ! cpl writes aux hist files: r2x every c2o comm
+     logical                 :: histaux_z2x     ! cpl writes aux hist files: z2x every c2z comm
      logical                 :: histaux_double_precision ! if true, use double-precision for cpl aux hist files
      logical                 :: histavg_atm     ! cpl writes atm fields in average history file
      logical                 :: histavg_lnd     ! cpl writes lnd fields in average history file
@@ -172,6 +178,8 @@ MODULE seq_infodata_mod
      logical                 :: mct_usealltoall ! flag for mct alltoall
      logical                 :: mct_usevector   ! flag for mct vector
      integer                 :: nlmaps_verbosity    ! see seq_nlmap_mod
+     logical                 :: nlmaps_atm2srf_conserve   ! see seq_nlmap_mod
+     character(nlmaps_exclude_nchar) :: nlmaps_exclude_fields(nlmaps_exclude_max_number) ! see seq_nlmap_mod
 
      logical                 :: reprosum_use_ddpdd  ! use ddpdd algorithm
      logical                 :: reprosum_allow_infnan ! allow INF and NaN summands
@@ -193,11 +201,13 @@ MODULE seq_infodata_mod
      logical                 :: rofice_present  ! does rof have iceberg coupling on
      logical                 :: rof_prognostic  ! does rof component need input data
      logical                 :: rofocn_prognostic ! does component need ocn data
+     logical                 :: lndocn_prognostic ! does component need ocn data
      logical                 :: flood_present   ! does rof have flooding on
      logical                 :: ocn_present     ! does component model exist
      logical                 :: ocn_prognostic  ! does component model need input data from driver
      logical                 :: ocnrof_prognostic ! does component need rof data
      logical                 :: ocn_c2_glcshelf   ! will ocn component send data for ice shelf fluxes in driver
+     logical                 :: ocn_c2_glctf    ! will ocn component send data for thermal forcing in driver
      logical                 :: ice_present     ! does component model exist
      logical                 :: ice_prognostic  ! does component model need input data from driver
      logical                 :: iceberg_prognostic ! does the ice model support icebergs
@@ -207,6 +217,7 @@ MODULE seq_infodata_mod
      logical                 :: glcice_present  ! does glc have iceberg coupling on
      logical                 :: glc_prognostic  ! does component model need input data from driver
      logical                 :: glc_coupled_fluxes ! does glc send fluxes to other components (only relevant if glc_present is .true.)
+     integer                 :: glc_nzoc        ! number of z-levels for ocn/glc thermal forcing coupling
      logical                 :: wav_present     ! does component model exist
      logical                 :: wav_prognostic  ! does component model need input data from driver
      logical                 :: esp_present     ! does component model exist
@@ -251,7 +262,8 @@ MODULE seq_infodata_mod
      integer(SHR_KIND_IN)    :: iac_phase       ! iac phase
      logical                 :: atm_aero        ! atmosphere aerosols
      logical                 :: glc_g2lupdate   ! update glc2lnd fields in lnd model
-     real(shr_kind_r8) :: max_cplstep_time  ! abort if cplstep time exceeds this value
+     real(SHR_KIND_R8)       :: max_cplstep_time ! abort if cplstep time exceeds this value
+     real(SHR_KIND_R8)       :: rmean_rmv_ice_runoff ! running mean of removed Antarctic ice runoff
      !--- set from restart file ---
      character(SHR_KIND_CL)  :: rest_case_name  ! Short case identification
      !--- set by driver and may be time varying
@@ -373,6 +385,7 @@ CONTAINS
     logical                :: flux_albav         ! T => no diurnal cycle in ocn albedos
     logical                :: flux_diurnal       ! T => diurnal cycle in atm/ocn fluxes
     integer                :: ocn_surface_flux_scheme  ! 0: E3SMv1 1: COARE  2: UA
+    character(SHR_KIND_CS) :: precip_downscaling_method ! Precipitation downscaling method
     logical                 :: coldair_outbreak_mod ! (Mahrt & Sun 1995,MWR)
     real(SHR_KIND_R8)       :: flux_convergence   ! atmocn flux calc convergence value
     integer                 :: flux_max_iteration ! max number of iterations of atmocn flux loop
@@ -392,6 +405,7 @@ CONTAINS
     character(SHR_KIND_CS) :: aoflux_grid        ! grid for atm ocn flux calc
     integer                :: cpl_decomp         ! coupler decomp
     character(SHR_KIND_CL) :: cpl_seq_option     ! coupler sequencing option
+    logical                :: cpl_compute_maps_online   ! moab maps flag (online computation or offline map reading)
 
     logical                :: do_budgets         ! do heat/water budgets diagnostics
     logical                :: do_bgc_budgets     ! do BGC budgets diagnostics
@@ -411,6 +425,7 @@ CONTAINS
     logical                :: histaux_l2x1yrg    ! cpl writes aux hist files: l2x annual glc forcings
     logical                :: histaux_l2x        ! cpl writes aux hist files: l2x every c2l comm
     logical                :: histaux_r2x        ! cpl writes aux hist files: r2x every c2o comm
+    logical                :: histaux_z2x        ! cpl writes aux hist files: z2x every c2z comm
     logical                :: histaux_double_precision ! if true, use double-precision for cpl aux hist files
     logical                :: histavg_atm        ! cpl writes atm fields in average history file
     logical                :: histavg_lnd        ! cpl writes lnd fields in average history file
@@ -439,6 +454,9 @@ CONTAINS
     real(shr_kind_r8)      :: max_cplstep_time   ! abort if cplstep time exceeds this value
     character(SHR_KIND_CL) :: model_doi_url
     integer(SHR_KIND_IN)   :: nlmaps_verbosity   ! see seq_nlmap_mod
+    logical                :: nlmaps_atm2srf_conserve ! see seq_nlmap_mod
+    character(nlmaps_exclude_nchar) :: nlmaps_exclude_fields(nlmaps_exclude_max_number) ! see seq_nlmap_mod
+
 
     namelist /seq_infodata_inparm/  &
          cime_model, case_desc, case_name, start_type, tchkpt_dir,     &
@@ -468,18 +486,18 @@ CONTAINS
          histaux_a2x,histaux_a2x1hri,histaux_a2x1hr,       &
          histaux_a2x3hr,histaux_a2x3hrp,                   &
          histaux_a2x24hr,histaux_l2x   ,histaux_r2x,       &
-         histaux_double_precision,                         &
+         histaux_z2x,       histaux_double_precision,      &
          histavg_atm, histavg_lnd, histavg_ocn, histavg_ice, &
          histavg_rof, histavg_glc, histavg_wav, histavg_xao, &
          histavg_iac, &
-         histaux_l2x1yrg, cpl_seq_option,                   &
-         eps_frac, eps_amask,                   &
+         histaux_l2x1yrg, cpl_seq_option, cpl_compute_maps_online, &
+         eps_frac, eps_amask,                              &
          eps_agrid, eps_aarea, eps_omask, eps_ogrid,       &
          eps_oarea, esmf_map_flag,                         &
          reprosum_use_ddpdd, reprosum_allow_infnan,        &
          reprosum_diffmax, reprosum_recompute,             &
          mct_usealltoall, mct_usevector, max_cplstep_time, model_doi_url, &
-         nlmaps_verbosity
+         nlmaps_verbosity, nlmaps_atm2srf_conserve, nlmaps_exclude_fields
 
     !-------------------------------------------------------------------------------
 
@@ -490,6 +508,8 @@ CONTAINS
     !---------------------------------------------------------------------------
     if (seq_comm_iamroot(ID)) then
 
+       ! not in the namelist but in the infobuffer
+       precip_downscaling_method = ' '
        !---------------------------------------------------------------------------
        ! Set namelist defaults
        !---------------------------------------------------------------------------
@@ -556,6 +576,7 @@ CONTAINS
        aoflux_grid           = 'ocn'
        cpl_decomp            = 0
        cpl_seq_option        = 'CESM1_MOD'
+       cpl_compute_maps_online = .false.
        do_budgets            = .false.
        do_bgc_budgets        = .false.
        do_histinit           = .false.
@@ -574,6 +595,7 @@ CONTAINS
        histaux_l2x1yrg       = .false.
        histaux_l2x           = .false.
        histaux_r2x           = .false.
+       histaux_z2x           = .false.
        histaux_double_precision = .false.
        histavg_atm           = .true.
        histavg_lnd           = .true.
@@ -601,6 +623,8 @@ CONTAINS
        max_cplstep_time      = 0.0
        model_doi_url        = 'unset'
        nlmaps_verbosity      = 0
+       nlmaps_atm2srf_conserve = .false.
+       nlmaps_exclude_fields(:) = ' '
 
        !---------------------------------------------------------------------------
        ! Read in namelist
@@ -670,6 +694,7 @@ CONTAINS
        infodata%flux_albav            = flux_albav
        infodata%flux_diurnal          = flux_diurnal
        infodata%ocn_surface_flux_scheme = ocn_surface_flux_scheme
+       infodata%precip_downscaling_method = precip_downscaling_method
        infodata%flux_convergence      = flux_convergence
        infodata%coldair_outbreak_mod      = coldair_outbreak_mod
        infodata%flux_max_iteration    = flux_max_iteration
@@ -685,14 +710,11 @@ CONTAINS
        infodata%wav_gnam              = wav_gnam
        infodata%iac_gnam              = iac_gnam
        infodata%shr_map_dopole        = shr_map_dopole
-#ifdef COMPARE_TO_NUOPC
-       infodata%vect_map              = 'none'
-#else
        infodata%vect_map              = vect_map
-#endif
        infodata%aoflux_grid           = aoflux_grid
        infodata%cpl_decomp            = cpl_decomp
        infodata%cpl_seq_option        = cpl_seq_option
+       infodata%cpl_compute_maps_online = cpl_compute_maps_online
        infodata%do_budgets            = do_budgets
        infodata%do_bgc_budgets        = do_bgc_budgets
        infodata%do_histinit           = do_histinit
@@ -711,6 +733,7 @@ CONTAINS
        infodata%histaux_l2x1yrg       = histaux_l2x1yrg
        infodata%histaux_l2x           = histaux_l2x
        infodata%histaux_r2x           = histaux_r2x
+       infodata%histaux_z2x           = histaux_z2x
        infodata%histaux_double_precision = histaux_double_precision
        infodata%histavg_atm           = histavg_atm
        infodata%histavg_lnd           = histavg_lnd
@@ -736,6 +759,8 @@ CONTAINS
        infodata%mct_usealltoall       = mct_usealltoall
        infodata%mct_usevector         = mct_usevector
        infodata%nlmaps_verbosity      = nlmaps_verbosity
+       infodata%nlmaps_atm2srf_conserve = nlmaps_atm2srf_conserve
+       infodata%nlmaps_exclude_fields = nlmaps_exclude_fields
 
        infodata%info_debug            = info_debug
        infodata%bfbflag               = bfbflag
@@ -759,10 +784,12 @@ CONTAINS
        infodata%atm_prognostic = .false.
        infodata%lnd_prognostic = .false.
        infodata%rof_prognostic = .false.
-       infodata%rofocn_prognostic = .false. 
+       infodata%rofocn_prognostic = .false.
+       infodata%lndocn_prognostic = .false.
        infodata%ocn_prognostic = .false.
        infodata%ocnrof_prognostic = .false.
        infodata%ocn_c2_glcshelf = .false.
+       infodata%ocn_c2_glctf = .false.
        infodata%ice_prognostic = .false.
        infodata%glc_prognostic = .false.
        ! It's safest to assume glc_coupled_fluxes = .true. if it's not set elsewhere,
@@ -770,6 +797,7 @@ CONTAINS
        ! if glc_present is .false., so it's okay to just start out assuming it's .true.
        ! in all cases.
        infodata%glc_coupled_fluxes = .true.
+       infodata%glc_nzoc = 0
        infodata%wav_prognostic = .false.
        infodata%iac_prognostic = .false.
        infodata%iceberg_prognostic = .false.
@@ -795,8 +823,8 @@ CONTAINS
        infodata%lnd_domain = 'none'
        infodata%rof_mesh = 'none'
        infodata%rof_domain = 'none'
-       infodata%ocn_domain = 'none' ! will be used for ocean data models only; will be used as a signal 
-       infodata%ice_domain = 'none' ! will be used for ice   data models only; will be used as a signal 
+       infodata%ocn_domain = 'none' ! will be used for ocean data models only; will be used as a signal
+       infodata%ice_domain = 'none' ! will be used for ice   data models only; will be used as a signal
        infodata%atm_mesh = 'none' ! will be used for atmosphere data models only; will be used as a signal
                                     ! not sure if it exists always actually
 
@@ -813,6 +841,7 @@ CONTAINS
        infodata%atm_aero      = .false.
        infodata%glc_g2lupdate = .false.
        infodata%glc_valid_input = .true.
+       infodata%rmean_rmv_ice_runoff   = -1.0_SHR_KIND_R8
 
        infodata%max_cplstep_time = max_cplstep_time
        infodata%model_doi_url = model_doi_url
@@ -912,11 +941,13 @@ CONTAINS
           call seq_io_read(infodata%restart_file,pioid,infodata%nextsw_cday   ,'seq_infodata_nextsw_cday')
           call seq_io_read(infodata%restart_file,pioid,infodata%precip_fact   ,'seq_infodata_precip_fact')
           call seq_io_read(infodata%restart_file,pioid,infodata%rest_case_name,'seq_infodata_case_name')
+          call seq_io_read(infodata%restart_file,pioid,infodata%rmean_rmv_ice_runoff   ,'seq_infodata_rmean_rmv_ice_runoff')
        endif
        !--- Send from CPLID ROOT to GLOBALID ROOT, use bcast as surrogate
        call shr_mpi_bcast(infodata%nextsw_cday,mpicom,pebcast=seq_comm_gloroot(CPLID))
        call shr_mpi_bcast(infodata%precip_fact,mpicom,pebcast=seq_comm_gloroot(CPLID))
        call shr_mpi_bcast(infodata%rest_case_name,mpicom,pebcast=seq_comm_gloroot(CPLID))
+       call shr_mpi_bcast(infodata%rmean_rmv_ice_runoff,mpicom,pebcast=seq_comm_gloroot(CPLID))
     endif
 
     if (seq_comm_iamroot(ID)) then
@@ -1007,17 +1038,18 @@ CONTAINS
        single_column, scmlat,scmlon,logFilePostFix, outPathRoot,&
        scm_multcols, scm_nx, scm_ny,                                      &
        atm_present, atm_prognostic,                                       &
-       lnd_present, lnd_prognostic,                                       &
+       lnd_present, lnd_prognostic, lndocn_prognostic,                    &
        rof_present, rof_prognostic, rofocn_prognostic,                    &
-       ocn_present, ocn_prognostic, ocnrof_prognostic, ocn_c2_glcshelf,   &
+       ocn_present, ocn_prognostic, ocnrof_prognostic,                    &
+       ocn_c2_glcshelf, ocn_c2_glctf,                                     &
        ice_present, ice_prognostic,                                       &
        glc_present, glc_prognostic,                                       &
        iac_present, iac_prognostic,                                       &
-       glc_coupled_fluxes,                                                &
+       glc_coupled_fluxes, glc_nzoc,                                      &
        flood_present, wav_present, wav_prognostic, rofice_present,        &
        glclnd_present, glcocn_present, glcice_present, iceberg_prognostic,&
        esp_present, esp_prognostic,                                       &
-       bfbflag, lnd_gnam, cpl_decomp, cpl_seq_option,                     &
+       bfbflag, lnd_gnam, cpl_decomp, cpl_seq_option, cpl_compute_maps_online,  &
        ice_gnam, rof_gnam, glc_gnam, wav_gnam, iac_gnam,                  &
        atm_gnam, ocn_gnam, info_debug, dead_comps, read_restart,          &
        shr_map_dopole, vect_map, aoflux_grid, flux_epbalfact,             &
@@ -1031,7 +1063,7 @@ CONTAINS
        budget_ann, budget_ltann, budget_ltend , force_stop_at,            &
        histaux_a2x    , histaux_a2x1hri, histaux_a2x1hr,                  &
        histaux_a2x3hr, histaux_a2x3hrp , histaux_l2x1yrg,                 &
-       histaux_a2x24hr, histaux_l2x   , histaux_r2x     , histaux_double_precision, &
+       histaux_a2x24hr, histaux_l2x   , histaux_r2x     , histaux_z2x      , histaux_double_precision, &
        orb_obliq, histavg_atm, histavg_lnd, histavg_ocn, histavg_ice,     &
        histavg_rof, histavg_glc, histavg_wav, histavg_xao, histavg_iac,   &
        orb_iyear, orb_iyear_align, orb_mode, orb_mvelp,        &
@@ -1047,7 +1079,8 @@ CONTAINS
        reprosum_use_ddpdd, reprosum_allow_infnan,                         &
        reprosum_diffmax, reprosum_recompute,                              &
        mct_usealltoall, mct_usevector, max_cplstep_time, model_doi_url,   &
-       glc_valid_input, nlmaps_verbosity)
+       glc_valid_input, nlmaps_verbosity, nlmaps_atm2srf_conserve,        &
+       nlmaps_exclude_fields, rmean_rmv_ice_runoff)
 
     implicit none
 
@@ -1121,6 +1154,7 @@ CONTAINS
     character(len=*),       optional, intent(OUT) :: aoflux_grid             ! grid for atm ocn flux calc
     integer,                optional, intent(OUT) :: cpl_decomp              ! coupler decomp
     character(len=*),       optional, intent(OUT) :: cpl_seq_option          ! coupler sequencing option
+    logical,                optional, intent(OUT) :: cpl_compute_maps_online ! coupler online/offline maps flag
     logical,                optional, intent(OUT) :: do_budgets              ! heat/water budgets
     logical,                optional, intent(OUT) :: do_bgc_budgets          ! BGC budgets
     logical,                optional, intent(OUT) :: do_histinit             ! initial history file
@@ -1139,6 +1173,7 @@ CONTAINS
     logical,                optional, intent(OUT) :: histaux_l2x1yrg
     logical,                optional, intent(OUT) :: histaux_l2x
     logical,                optional, intent(OUT) :: histaux_r2x
+    logical,                optional, intent(OUT) :: histaux_z2x
     logical,                optional, intent(OUT) :: histaux_double_precision
     logical,                optional, intent(OUT) :: histavg_atm
     logical,                optional, intent(OUT) :: histavg_lnd
@@ -1164,6 +1199,8 @@ CONTAINS
     logical,                optional, intent(OUT) :: mct_usealltoall         ! flag for mct alltoall
     logical,                optional, intent(OUT) :: mct_usevector           ! flag for mct vector
     integer(SHR_KIND_IN),   optional, intent(OUT) :: nlmaps_verbosity
+    logical,                optional, intent(OUT) :: nlmaps_atm2srf_conserve
+    character(nlmaps_exclude_nchar), optional, intent(OUT) :: nlmaps_exclude_fields(nlmaps_exclude_max_number)
 
     integer(SHR_KIND_IN),   optional, intent(OUT) :: info_debug
     logical,                optional, intent(OUT) :: bfbflag
@@ -1174,6 +1211,7 @@ CONTAINS
     logical,                optional, intent(OUT) :: atm_prognostic          ! need data
     logical,                optional, intent(OUT) :: lnd_present
     logical,                optional, intent(OUT) :: lnd_prognostic
+    logical,                optional, intent(OUT) :: lndocn_prognostic
     logical,                optional, intent(OUT) :: rof_present
     logical,                optional, intent(OUT) :: rofice_present
     logical,                optional, intent(OUT) :: rof_prognostic
@@ -1183,6 +1221,7 @@ CONTAINS
     logical,                optional, intent(OUT) :: ocn_prognostic
     logical,                optional, intent(OUT) :: ocnrof_prognostic
     logical,                optional, intent(OUT) :: ocn_c2_glcshelf
+    logical,                optional, intent(OUT) :: ocn_c2_glctf
     logical,                optional, intent(OUT) :: ice_present
     logical,                optional, intent(OUT) :: ice_prognostic
     logical,                optional, intent(OUT) :: iceberg_prognostic
@@ -1192,6 +1231,7 @@ CONTAINS
     logical,                optional, intent(OUT) :: glcice_present
     logical,                optional, intent(OUT) :: glc_prognostic
     logical,                optional, intent(OUT) :: glc_coupled_fluxes
+    integer,                optional, intent(OUT) :: glc_nzoc
     logical,                optional, intent(OUT) :: wav_present
     logical,                optional, intent(OUT) :: wav_prognostic
     logical,                optional, intent(OUT) :: iac_present
@@ -1238,6 +1278,7 @@ CONTAINS
     real(shr_kind_r8),      optional, intent(out) :: max_cplstep_time
     character(SHR_KIND_CL), optional, intent(OUT) :: model_doi_url
     logical,                optional, intent(OUT) :: glc_valid_input
+    real(SHR_KIND_R8),      optional, intent(OUT) :: rmean_rmv_ice_runoff    ! running mean of removed Antarctic ice runoff
 
     !----- local -----
     character(len=*), parameter :: subname = '(seq_infodata_GetData_explicit) '
@@ -1312,6 +1353,7 @@ CONTAINS
     if ( present(aoflux_grid)    ) aoflux_grid    = infodata%aoflux_grid
     if ( present(cpl_decomp)     ) cpl_decomp     = infodata%cpl_decomp
     if ( present(cpl_seq_option) ) cpl_seq_option = infodata%cpl_seq_option
+    if ( present(cpl_compute_maps_online)  ) cpl_compute_maps_online  = infodata%cpl_compute_maps_online
     if ( present(do_budgets)     ) do_budgets     = infodata%do_budgets
     if ( present(do_bgc_budgets) ) do_bgc_budgets = infodata%do_bgc_budgets
     if ( present(do_histinit)    ) do_histinit    = infodata%do_histinit
@@ -1330,6 +1372,7 @@ CONTAINS
     if ( present(histaux_l2x1yrg)) histaux_l2x1yrg= infodata%histaux_l2x1yrg
     if ( present(histaux_l2x)    ) histaux_l2x    = infodata%histaux_l2x
     if ( present(histaux_r2x)    ) histaux_r2x    = infodata%histaux_r2x
+    if ( present(histaux_z2x)    ) histaux_z2x    = infodata%histaux_z2x
     if ( present(histaux_double_precision)) histaux_double_precision = infodata%histaux_double_precision
     if ( present(histavg_atm)    ) histavg_atm    = infodata%histavg_atm
     if ( present(histavg_lnd)    ) histavg_lnd    = infodata%histavg_lnd
@@ -1355,6 +1398,8 @@ CONTAINS
     if ( present(mct_usealltoall)) mct_usealltoall = infodata%mct_usealltoall
     if ( present(mct_usevector)  ) mct_usevector  = infodata%mct_usevector
     if ( present(nlmaps_verbosity)) nlmaps_verbosity = infodata%nlmaps_verbosity
+    if ( present(nlmaps_atm2srf_conserve)) nlmaps_atm2srf_conserve = infodata%nlmaps_atm2srf_conserve
+    if ( present(nlmaps_exclude_fields)) nlmaps_exclude_fields = infodata%nlmaps_exclude_fields
 
     if ( present(info_debug)     ) info_debug     = infodata%info_debug
     if ( present(bfbflag)        ) bfbflag        = infodata%bfbflag
@@ -1365,6 +1410,7 @@ CONTAINS
     if ( present(atm_prognostic) ) atm_prognostic = infodata%atm_prognostic
     if ( present(lnd_present)    ) lnd_present    = infodata%lnd_present
     if ( present(lnd_prognostic) ) lnd_prognostic = infodata%lnd_prognostic
+    if ( present(lndocn_prognostic) ) lndocn_prognostic = infodata%lndocn_prognostic
     if ( present(rof_present)    ) rof_present    = infodata%rof_present
     if ( present(rofice_present) ) rofice_present = infodata%rofice_present
     if ( present(rof_prognostic) ) rof_prognostic = infodata%rof_prognostic
@@ -1374,6 +1420,7 @@ CONTAINS
     if ( present(ocn_prognostic) ) ocn_prognostic = infodata%ocn_prognostic
     if ( present(ocnrof_prognostic) ) ocnrof_prognostic = infodata%ocnrof_prognostic
     if ( present(ocn_c2_glcshelf) ) ocn_c2_glcshelf = infodata%ocn_c2_glcshelf
+    if ( present(ocn_c2_glctf) ) ocn_c2_glctf = infodata%ocn_c2_glctf
     if ( present(ice_present)    ) ice_present    = infodata%ice_present
     if ( present(ice_prognostic) ) ice_prognostic = infodata%ice_prognostic
     if ( present(iceberg_prognostic)) iceberg_prognostic = infodata%iceberg_prognostic
@@ -1383,6 +1430,7 @@ CONTAINS
     if ( present(glcice_present) ) glcice_present = infodata%glcice_present
     if ( present(glc_prognostic) ) glc_prognostic = infodata%glc_prognostic
     if ( present(glc_coupled_fluxes)) glc_coupled_fluxes = infodata%glc_coupled_fluxes
+    if ( present(glc_nzoc)       ) glc_nzoc       = infodata%glc_nzoc
     if ( present(wav_present)    ) wav_present    = infodata%wav_present
     if ( present(wav_prognostic) ) wav_prognostic = infodata%wav_prognostic
     if ( present(esp_present)    ) esp_present    = infodata%esp_present
@@ -1442,6 +1490,7 @@ CONTAINS
     if ( present(model_doi_url) ) model_doi_url = infodata%model_doi_url
 
     if ( present(glc_valid_input)) glc_valid_input = infodata%glc_valid_input
+    if ( present(rmean_rmv_ice_runoff) ) rmean_rmv_ice_runoff = infodata%rmean_rmv_ice_runoff
 
   END SUBROUTINE seq_infodata_GetData_explicit
 
@@ -1570,17 +1619,18 @@ CONTAINS
        single_column, scmlat,scmlon,logFilePostFix, outPathRoot,          &
        scm_multcols, scm_nx, scm_ny,                                      &
        atm_present, atm_prognostic,                                       &
-       lnd_present, lnd_prognostic,                                       &
+       lnd_present, lnd_prognostic, lndocn_prognostic,                    &
        rof_present, rof_prognostic, rofocn_prognostic,                    &
-       ocn_present, ocn_prognostic, ocnrof_prognostic, ocn_c2_glcshelf,   &
+       ocn_present, ocn_prognostic, ocnrof_prognostic,                    &
+       ocn_c2_glcshelf, ocn_c2_glctf,                                     &
        ice_present, ice_prognostic,                                       &
        glc_present, glc_prognostic,                                       &
-       glc_coupled_fluxes,                                                &
+       glc_coupled_fluxes, glc_nzoc,                                      &
        flood_present, wav_present, wav_prognostic, rofice_present,        &
        glclnd_present, glcocn_present, glcice_present, iceberg_prognostic,&
        esp_present, esp_prognostic,                                       &
        iac_present, iac_prognostic,                                       &
-       bfbflag, lnd_gnam, cpl_decomp, cpl_seq_option,                     &
+       bfbflag, lnd_gnam, cpl_decomp, cpl_seq_option, cpl_compute_maps_online,  &
        ice_gnam, rof_gnam, glc_gnam, wav_gnam, iac_gnam,                  &
        atm_gnam, ocn_gnam, info_debug, dead_comps, read_restart,          &
        shr_map_dopole, vect_map, aoflux_grid, run_barriers,               &
@@ -1595,7 +1645,7 @@ CONTAINS
        budget_ann, budget_ltann, budget_ltend ,                           &
        histaux_a2x    , histaux_a2x1hri, histaux_a2x1hr,                  &
        histaux_a2x3hr, histaux_a2x3hrp , histaux_l2x1yrg,                 &
-       histaux_a2x24hr, histaux_l2x   , histaux_r2x     , histaux_double_precision,  &
+       histaux_a2x24hr, histaux_l2x   , histaux_r2x     , histaux_z2x , histaux_double_precision,  &
        orb_obliq, histavg_atm, histavg_lnd, histavg_ocn, histavg_ice,     &
        histavg_rof, histavg_glc, histavg_wav, histavg_xao, histavg_iac,   &
        orb_iyear, orb_iyear_align, orb_mode, orb_mvelp,        &
@@ -1610,7 +1660,10 @@ CONTAINS
        eps_aarea, eps_omask, eps_ogrid, eps_oarea,                        &
        reprosum_use_ddpdd, reprosum_allow_infnan,                         &
        reprosum_diffmax, reprosum_recompute,                              &
-       mct_usealltoall, mct_usevector, glc_valid_input, nlmaps_verbosity)
+       mct_usealltoall, mct_usevector, glc_valid_input,                   &
+       nlmaps_verbosity, nlmaps_atm2srf_conserve, nlmaps_exclude_fields,  &
+       rmean_rmv_ice_runoff)
+
 
 
     implicit none
@@ -1684,6 +1737,7 @@ CONTAINS
     character(len=*),       optional, intent(IN)    :: aoflux_grid             ! grid for atm ocn flux calc
     integer,                optional, intent(IN)    :: cpl_decomp              ! coupler decomp
     character(len=*),       optional, intent(IN)    :: cpl_seq_option          ! coupler sequencing option
+    logical,                optional, intent(IN)    :: cpl_compute_maps_online ! moab maps flag
     logical,                optional, intent(IN)    :: do_budgets              ! heat/water budgets
     logical,                optional, intent(IN)    :: do_bgc_budgets          ! BGC budgets
     logical,                optional, intent(IN)    :: do_histinit             ! initial history file
@@ -1703,6 +1757,7 @@ CONTAINS
     logical,                optional, intent(IN)    :: histaux_double_precision
     logical,                optional, intent(IN)    :: histaux_l2x
     logical,                optional, intent(IN)    :: histaux_r2x
+    logical,                optional, intent(IN)    :: histaux_z2x
     logical,                optional, intent(IN)    :: histavg_atm
     logical,                optional, intent(IN)    :: histavg_lnd
     logical,                optional, intent(IN)    :: histavg_ocn
@@ -1727,6 +1782,8 @@ CONTAINS
     logical,                optional, intent(IN)    :: mct_usealltoall    ! flag for mct alltoall
     logical,                optional, intent(IN)    :: mct_usevector      ! flag for mct vector
     integer(SHR_KIND_IN),   optional, intent(IN)    :: nlmaps_verbosity
+    logical,                optional, intent(IN)    :: nlmaps_atm2srf_conserve
+    character(nlmaps_exclude_nchar), optional, intent(IN) :: nlmaps_exclude_fields(nlmaps_exclude_max_number)
 
     integer(SHR_KIND_IN),   optional, intent(IN)    :: info_debug
     logical,                optional, intent(IN)    :: bfbflag
@@ -1737,6 +1794,7 @@ CONTAINS
     logical,                optional, intent(IN)    :: atm_prognostic     ! need data
     logical,                optional, intent(IN)    :: lnd_present
     logical,                optional, intent(IN)    :: lnd_prognostic
+    logical,                optional, intent(IN)    :: lndocn_prognostic
     logical,                optional, intent(IN)    :: rof_present
     logical,                optional, intent(IN)    :: rofice_present
     logical,                optional, intent(IN)    :: rof_prognostic
@@ -1746,6 +1804,7 @@ CONTAINS
     logical,                optional, intent(IN)    :: ocn_prognostic
     logical,                optional, intent(IN)    :: ocnrof_prognostic
     logical,                optional, intent(IN)    :: ocn_c2_glcshelf
+    logical,                optional, intent(IN)    :: ocn_c2_glctf
     logical,                optional, intent(IN)    :: ice_present
     logical,                optional, intent(IN)    :: ice_prognostic
     logical,                optional, intent(IN)    :: iceberg_prognostic
@@ -1755,6 +1814,7 @@ CONTAINS
     logical,                optional, intent(IN)    :: glcice_present
     logical,                optional, intent(IN)    :: glc_prognostic
     logical,                optional, intent(IN)    :: glc_coupled_fluxes
+    integer,                optional, intent(IN)    :: glc_nzoc
     logical,                optional, intent(IN)    :: wav_present
     logical,                optional, intent(IN)    :: wav_prognostic
     logical,                optional, intent(IN)    :: esp_present
@@ -1798,6 +1858,7 @@ CONTAINS
     logical,                optional, intent(IN) :: atm_aero              ! atm aerosols
     logical,                optional, intent(IN) :: glc_g2lupdate         ! update glc2lnd fields in lnd model
     logical,                optional, intent(IN) :: glc_valid_input
+    real(SHR_KIND_R8),      optional, intent(IN)    :: rmean_rmv_ice_runoff ! running mean of removed Antarctic ice runoff
 
     !EOP
 
@@ -1874,6 +1935,7 @@ CONTAINS
     if ( present(aoflux_grid)    ) infodata%aoflux_grid    = aoflux_grid
     if ( present(cpl_decomp)     ) infodata%cpl_decomp     = cpl_decomp
     if ( present(cpl_seq_option) ) infodata%cpl_seq_option = cpl_seq_option
+    if ( present(cpl_compute_maps_online)  ) infodata%cpl_compute_maps_online  = cpl_compute_maps_online
     if ( present(do_budgets)     ) infodata%do_budgets     = do_budgets
     if ( present(do_bgc_budgets) ) infodata%do_bgc_budgets = do_bgc_budgets
     if ( present(do_histinit)    ) infodata%do_histinit    = do_histinit
@@ -1892,6 +1954,7 @@ CONTAINS
     if ( present(histaux_l2x1yrg)) infodata%histaux_l2x1yrg= histaux_l2x1yrg
     if ( present(histaux_l2x)    ) infodata%histaux_l2x    = histaux_l2x
     if ( present(histaux_r2x)    ) infodata%histaux_r2x    = histaux_r2x
+    if ( present(histaux_z2x)    ) infodata%histaux_z2x    = histaux_z2x
     if ( present(histaux_double_precision)) infodata%histaux_double_precision = histaux_double_precision
     if ( present(histavg_atm)    ) infodata%histavg_atm    = histavg_atm
     if ( present(histavg_lnd)    ) infodata%histavg_lnd    = histavg_lnd
@@ -1917,6 +1980,8 @@ CONTAINS
     if ( present(mct_usealltoall)) infodata%mct_usealltoall = mct_usealltoall
     if ( present(mct_usevector)  ) infodata%mct_usevector  = mct_usevector
     if ( present(nlmaps_verbosity)) infodata%nlmaps_verbosity = nlmaps_verbosity
+    if ( present(nlmaps_atm2srf_conserve)) infodata%nlmaps_atm2srf_conserve = nlmaps_atm2srf_conserve
+    if ( present(nlmaps_exclude_fields)) infodata%nlmaps_exclude_fields = nlmaps_exclude_fields
 
     if ( present(info_debug)     ) infodata%info_debug     = info_debug
     if ( present(bfbflag)        ) infodata%bfbflag        = bfbflag
@@ -1927,6 +1992,7 @@ CONTAINS
     if ( present(atm_prognostic) ) infodata%atm_prognostic = atm_prognostic
     if ( present(lnd_present)    ) infodata%lnd_present    = lnd_present
     if ( present(lnd_prognostic) ) infodata%lnd_prognostic = lnd_prognostic
+    if ( present(lndocn_prognostic) ) infodata%lndocn_prognostic = lndocn_prognostic
     if ( present(rof_present)    ) infodata%rof_present    = rof_present
     if ( present(rofice_present) ) infodata%rofice_present = rofice_present
     if ( present(rof_prognostic) ) infodata%rof_prognostic = rof_prognostic
@@ -1936,6 +2002,7 @@ CONTAINS
     if ( present(ocn_prognostic) ) infodata%ocn_prognostic = ocn_prognostic
     if ( present(ocnrof_prognostic)) infodata%ocnrof_prognostic = ocnrof_prognostic
     if ( present(ocn_c2_glcshelf)) infodata%ocn_c2_glcshelf = ocn_c2_glcshelf
+    if ( present(ocn_c2_glctf))    infodata%ocn_c2_glctf = ocn_c2_glctf
     if ( present(ice_present)    ) infodata%ice_present    = ice_present
     if ( present(ice_prognostic) ) infodata%ice_prognostic = ice_prognostic
     if ( present(iceberg_prognostic)) infodata%iceberg_prognostic = iceberg_prognostic
@@ -1945,6 +2012,7 @@ CONTAINS
     if ( present(glcice_present) ) infodata%glcice_present = glcice_present
     if ( present(glc_prognostic) ) infodata%glc_prognostic = glc_prognostic
     if ( present(glc_coupled_fluxes)) infodata%glc_coupled_fluxes = glc_coupled_fluxes
+    if ( present(glc_nzoc)       ) infodata%glc_nzoc       = glc_nzoc
     if ( present(wav_present)    ) infodata%wav_present    = wav_present
     if ( present(wav_prognostic) ) infodata%wav_prognostic = wav_prognostic
     if ( present(iac_present)    ) infodata%iac_present    = iac_present
@@ -1988,6 +2056,7 @@ CONTAINS
     if ( present(atm_aero)       ) infodata%atm_aero       = atm_aero
     if ( present(glc_g2lupdate)  ) infodata%glc_g2lupdate  = glc_g2lupdate
     if ( present(glc_valid_input) ) infodata%glc_valid_input = glc_valid_input
+    if ( present(rmean_rmv_ice_runoff) ) infodata%rmean_rmv_ice_runoff = rmean_rmv_ice_runoff
 
   END SUBROUTINE seq_infodata_PutData_explicit
 
@@ -2118,6 +2187,7 @@ CONTAINS
     !EOP
 
     !----- local -----
+    integer :: i
 
     !-------------------------------------------------------------------------------
     ! Notes:
@@ -2187,6 +2257,7 @@ CONTAINS
     call shr_mpi_bcast(infodata%aoflux_grid,             mpicom)
     call shr_mpi_bcast(infodata%cpl_decomp,              mpicom)
     call shr_mpi_bcast(infodata%cpl_seq_option,          mpicom)
+    call shr_mpi_bcast(infodata%cpl_compute_maps_online, mpicom)
     call shr_mpi_bcast(infodata%do_budgets,              mpicom)
     call shr_mpi_bcast(infodata%do_bgc_budgets,          mpicom)
     call shr_mpi_bcast(infodata%do_histinit,             mpicom)
@@ -2205,6 +2276,7 @@ CONTAINS
     call shr_mpi_bcast(infodata%histaux_l2x1yrg       ,  mpicom)
     call shr_mpi_bcast(infodata%histaux_l2x           ,  mpicom)
     call shr_mpi_bcast(infodata%histaux_r2x           ,  mpicom)
+    call shr_mpi_bcast(infodata%histaux_z2x           ,  mpicom)
     call shr_mpi_bcast(infodata%histaux_double_precision,mpicom)
     call shr_mpi_bcast(infodata%histavg_atm           ,  mpicom)
     call shr_mpi_bcast(infodata%histavg_lnd           ,  mpicom)
@@ -2230,6 +2302,10 @@ CONTAINS
     call shr_mpi_bcast(infodata%mct_usealltoall,         mpicom)
     call shr_mpi_bcast(infodata%mct_usevector,           mpicom)
     call shr_mpi_bcast(infodata%nlmaps_verbosity,        mpicom)
+    call shr_mpi_bcast(infodata%nlmaps_atm2srf_conserve, mpicom)
+    do i = 1, nlmaps_exclude_max_number
+       call shr_mpi_bcast(infodata%nlmaps_exclude_fields(i), mpicom)
+    end do
 
     call shr_mpi_bcast(infodata%info_debug,              mpicom)
     call shr_mpi_bcast(infodata%bfbflag,                 mpicom)
@@ -2240,6 +2316,7 @@ CONTAINS
     call shr_mpi_bcast(infodata%atm_prognostic,          mpicom)
     call shr_mpi_bcast(infodata%lnd_present,             mpicom)
     call shr_mpi_bcast(infodata%lnd_prognostic,          mpicom)
+    call shr_mpi_bcast(infodata%lndocn_prognostic,       mpicom)
     call shr_mpi_bcast(infodata%rof_present,             mpicom)
     call shr_mpi_bcast(infodata%rofice_present,          mpicom)
     call shr_mpi_bcast(infodata%rof_prognostic,          mpicom)
@@ -2249,6 +2326,7 @@ CONTAINS
     call shr_mpi_bcast(infodata%ocn_prognostic,          mpicom)
     call shr_mpi_bcast(infodata%ocnrof_prognostic,       mpicom)
     call shr_mpi_bcast(infodata%ocn_c2_glcshelf,         mpicom)
+    call shr_mpi_bcast(infodata%ocn_c2_glctf,            mpicom)
     call shr_mpi_bcast(infodata%ice_present,             mpicom)
     call shr_mpi_bcast(infodata%ice_prognostic,          mpicom)
     call shr_mpi_bcast(infodata%iceberg_prognostic,      mpicom)
@@ -2258,6 +2336,7 @@ CONTAINS
     call shr_mpi_bcast(infodata%glcice_present,          mpicom)
     call shr_mpi_bcast(infodata%glc_prognostic,          mpicom)
     call shr_mpi_bcast(infodata%glc_coupled_fluxes,      mpicom)
+    call shr_mpi_bcast(infodata%glc_nzoc,                mpicom)
     call shr_mpi_bcast(infodata%wav_present,             mpicom)
     call shr_mpi_bcast(infodata%wav_prognostic,          mpicom)
     call shr_mpi_bcast(infodata%esp_present,             mpicom)
@@ -2302,6 +2381,7 @@ CONTAINS
     call shr_mpi_bcast(infodata%glc_valid_input,         mpicom)
     call shr_mpi_bcast(infodata%model_doi_url,           mpicom)
     call shr_mpi_bcast(infodata%constant_zenith_deg,     mpicom)
+    call shr_mpi_bcast(infodata%rmean_rmv_ice_runoff,    mpicom)
 
   end subroutine seq_infodata_bcast
 
@@ -2514,6 +2594,7 @@ CONTAINS
     if (lnd2cpli) then
        call shr_mpi_bcast(infodata%lnd_present,        mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%lnd_prognostic,     mpicom, pebcast=cmppe)
+       call shr_mpi_bcast(infodata%lndocn_prognostic,  mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%lnd_nx,             mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%lnd_ny,             mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%lnd_domain,         mpicom, pebcast=cmppe)
@@ -2544,6 +2625,7 @@ CONTAINS
        call shr_mpi_bcast(infodata%ocn_prognostic,     mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%ocnrof_prognostic,  mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%ocn_c2_glcshelf,    mpicom, pebcast=cmppe)
+       call shr_mpi_bcast(infodata%ocn_c2_glctf,       mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%ocn_nx,             mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%ocn_ny,             mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%ocn_domain,         mpicom, pebcast=cmppe)
@@ -2573,6 +2655,7 @@ CONTAINS
        call shr_mpi_bcast(infodata%glcice_present,     mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%glc_prognostic,     mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%glc_coupled_fluxes, mpicom, pebcast=cmppe)
+       call shr_mpi_bcast(infodata%glc_nzoc,           mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%glc_nx,             mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%glc_ny,             mpicom, pebcast=cmppe)
        ! dead_comps is true if it's ever set to true
@@ -2613,6 +2696,7 @@ CONTAINS
        call shr_mpi_bcast(infodata%atm_prognostic,     mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%lnd_present,        mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%lnd_prognostic,     mpicom, pebcast=cplpe)
+       call shr_mpi_bcast(infodata%lndocn_prognostic,  mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%rof_present,        mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%rofice_present,     mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%rof_prognostic,     mpicom, pebcast=cplpe)
@@ -2622,6 +2706,7 @@ CONTAINS
        call shr_mpi_bcast(infodata%ocn_prognostic,     mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%ocnrof_prognostic,  mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%ocn_c2_glcshelf,    mpicom, pebcast=cplpe)
+       call shr_mpi_bcast(infodata%ocn_c2_glctf,       mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%ice_present,        mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%ice_prognostic,     mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%iceberg_prognostic, mpicom, pebcast=cplpe)
@@ -2631,6 +2716,7 @@ CONTAINS
        call shr_mpi_bcast(infodata%glcice_present,     mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%glc_prognostic,     mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%glc_coupled_fluxes, mpicom, pebcast=cplpe)
+       call shr_mpi_bcast(infodata%glc_nzoc,           mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%wav_present,        mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%wav_prognostic,     mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%iac_present,        mpicom, pebcast=cplpe)
@@ -2648,6 +2734,7 @@ CONTAINS
 
     if (ocn2cplr) then
        call shr_mpi_bcast(infodata%precip_fact,        mpicom, pebcast=cmppe)
+       call shr_mpi_bcast(infodata%rmean_rmv_ice_runoff, mpicom, pebcast=cmppe)
     endif
 
     if (cpl2r) then
@@ -2655,6 +2742,7 @@ CONTAINS
        call shr_mpi_bcast(infodata%precip_fact,        mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%glc_g2lupdate,      mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%glc_valid_input,    mpicom, pebcast=cplpe)
+       call shr_mpi_bcast(infodata%rmean_rmv_ice_runoff, mpicom, pebcast=cplpe)
     endif
 
   end subroutine seq_infodata_Exchange
@@ -2808,7 +2896,7 @@ CONTAINS
     !EOP
 
     !----- local -----
-    integer                     :: ind
+    integer                     :: ind,i
     character(len=*), parameter :: subname = '(seq_infodata_print) '
     character(len=*), parameter ::  F0A = "(2A,A)"
     character(len=*), parameter ::  F0L = "(2A,L3)"
@@ -2886,7 +2974,7 @@ CONTAINS
     write(logunit,F0L) subname,'flux_diurnal             = ', infodata%flux_diurnal
     write(logunit,F0L) subname,'ocn_surface_flux_scheme  = ', infodata%ocn_surface_flux_scheme
     write(logunit,F0A) subname,'precip_downscaling_method = ', infodata%precip_downscaling_method
-    write(logunit,F0L) subname,'coldair_outbreak_mod            = ', infodata%coldair_outbreak_mod
+    write(logunit,F0L) subname,'coldair_outbreak_mod     = ', infodata%coldair_outbreak_mod
     write(logunit,F0R) subname,'flux_convergence         = ', infodata%flux_convergence
     write(logunit,F0I) subname,'flux_max_iteration       = ', infodata%flux_max_iteration
     write(logunit,F0A) subname,'glc_renormalize_smb      = ', trim(infodata%glc_renormalize_smb)
@@ -2904,6 +2992,7 @@ CONTAINS
     write(logunit,F0A) subname,'vect_map                 = ', trim(infodata%vect_map)
     write(logunit,F0A) subname,'aoflux_grid              = ', trim(infodata%aoflux_grid)
     write(logunit,F0A) subname,'cpl_seq_option           = ', trim(infodata%cpl_seq_option)
+    write(logunit,F0L) subname,'cpl_compute_maps_online  = ', infodata%cpl_compute_maps_online
     write(logunit,F0S) subname,'cpl_decomp               = ', infodata%cpl_decomp
     write(logunit,F0L) subname,'do_budgets               = ', infodata%do_budgets
     write(logunit,F0L) subname,'do_bgc_budgets           = ', infodata%do_bgc_budgets
@@ -2923,6 +3012,7 @@ CONTAINS
     write(logunit,F0L) subname,'histaux_l2x1yrg          = ', infodata%histaux_l2x1yrg
     write(logunit,F0L) subname,'histaux_l2x              = ', infodata%histaux_l2x
     write(logunit,F0L) subname,'histaux_r2x              = ', infodata%histaux_r2x
+    write(logunit,F0L) subname,'histaux_z2x              = ', infodata%histaux_z2x
     write(logunit,F0L) subname,'histaux_double_precision = ', infodata%histaux_double_precision
     write(logunit,F0L) subname,'histavg_atm              = ', infodata%histavg_atm
     write(logunit,F0L) subname,'histavg_lnd              = ', infodata%histavg_lnd
@@ -2952,6 +3042,14 @@ CONTAINS
     write(logunit,F0L) subname,'mct_usevector            = ', infodata%mct_usevector
 
     write(logunit,F0I) subname,'nlmaps_verbosity         = ', infodata%nlmaps_verbosity
+    write(logunit,F0L) subname,'nlmaps_atm2srf_conserve  = ', infodata%nlmaps_atm2srf_conserve
+
+    write(logunit,'(2A)',advance='no') subname,'nlmaps_exclude_fields    = '
+    do i = 1, size(infodata%nlmaps_exclude_fields)
+       if (len(trim(infodata%nlmaps_exclude_fields(i))) == 0) cycle
+       write(logunit,'(3A)',advance='no') ' ', trim(infodata%nlmaps_exclude_fields(i))
+    end do
+    write(logunit,'(A)') ''
 
     write(logunit,F0S) subname,'info_debug               = ', infodata%info_debug
     write(logunit,F0L) subname,'bfbflag                  = ', infodata%bfbflag
@@ -2963,6 +3061,7 @@ CONTAINS
     write(logunit,F0L) subname,'atm_prognostic           = ', infodata%atm_prognostic
     write(logunit,F0L) subname,'lnd_present              = ', infodata%lnd_present
     write(logunit,F0L) subname,'lnd_prognostic           = ', infodata%lnd_prognostic
+    write(logunit,F0L) subname,'lndocn_prognostic        = ', infodata%lndocn_prognostic
     write(logunit,F0L) subname,'rof_present              = ', infodata%rof_present
     write(logunit,F0L) subname,'rofice_present           = ', infodata%rofice_present
     write(logunit,F0L) subname,'rof_prognostic           = ', infodata%rof_prognostic
@@ -2972,6 +3071,7 @@ CONTAINS
     write(logunit,F0L) subname,'ocn_prognostic           = ', infodata%ocn_prognostic
     write(logunit,F0L) subname,'ocnrof_prognostic        = ', infodata%ocnrof_prognostic
     write(logunit,F0L) subname,'ocn_c2_glcshelf          = ', infodata%ocn_c2_glcshelf
+    write(logunit,F0L) subname,'ocn_c2_glctf             = ', infodata%ocn_c2_glctf
     write(logunit,F0L) subname,'ice_present              = ', infodata%ice_present
     write(logunit,F0L) subname,'ice_prognostic           = ', infodata%ice_prognostic
     write(logunit,F0L) subname,'iceberg_prognostic       = ', infodata%iceberg_prognostic
@@ -2981,6 +3081,7 @@ CONTAINS
     write(logunit,F0L) subname,'glcice_present           = ', infodata%glcice_present
     write(logunit,F0L) subname,'glc_prognostic           = ', infodata%glc_prognostic
     write(logunit,F0L) subname,'glc_coupled_fluxes       = ', infodata%glc_coupled_fluxes
+    write(logunit,F0L) subname,'glc_nzoc                 = ', infodata%glc_nzoc
     write(logunit,F0L) subname,'wav_present              = ', infodata%wav_present
     write(logunit,F0L) subname,'wav_prognostic           = ', infodata%wav_prognostic
     write(logunit,F0L) subname,'iac_present              = ', infodata%iac_present
@@ -3004,12 +3105,12 @@ CONTAINS
     write(logunit,F0I) subname,'wav_ny                   = ', infodata%wav_ny
     write(logunit,F0I) subname,'iac_nx                   = ', infodata%iac_nx
     write(logunit,F0I) subname,'iac_ny                   = ', infodata%iac_ny
-    write(logunit,F0I) subname,'lnd_domain               = ', infodata%lnd_domain
-    write(logunit,F0I) subname,'rof_mesh                 = ', infodata%rof_mesh
-    write(logunit,F0I) subname,'rof_domain               = ', infodata%rof_domain
-    write(logunit,F0I) subname,'ocn_domain               = ', infodata%ocn_domain
-    write(logunit,F0I) subname,'ice_domain               = ', infodata%ice_domain
-    write(logunit,F0I) subname,'atm_mesh                 = ', infodata%atm_mesh
+    write(logunit,F0A) subname,'lnd_domain               = ', trim(infodata%lnd_domain)
+    write(logunit,F0A) subname,'rof_mesh                 = ', trim(infodata%rof_mesh)
+    write(logunit,F0A) subname,'rof_domain               = ', trim(infodata%rof_domain)
+    write(logunit,F0A) subname,'ocn_domain               = ', trim(infodata%ocn_domain)
+    write(logunit,F0A) subname,'ice_domain               = ', trim(infodata%ice_domain)
+    write(logunit,F0A) subname,'atm_mesh                 = ', infodata%atm_mesh
 
     write(logunit,F0R) subname,'nextsw_cday              = ', infodata%nextsw_cday
     write(logunit,F0R) subname,'precip_fact              = ', infodata%precip_fact
@@ -3025,6 +3126,7 @@ CONTAINS
     write(logunit,F0S) subname,'iac_phase                = ', infodata%iac_phase
 
     write(logunit,F0L) subname,'glc_g2lupdate            = ', infodata%glc_g2lupdate
+    write(logunit,F0R) subname,'rmean_rmv_ice_runoff     = ', infodata%rmean_rmv_ice_runoff
     !     endif
 
   END SUBROUTINE seq_infodata_print

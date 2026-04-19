@@ -1,6 +1,6 @@
 #include "field_layout.hpp"
 
-#include <ekat/util/ekat_string_utils.hpp>
+#include <ekat_string_utils.hpp>
 
 namespace scream
 {
@@ -9,7 +9,7 @@ FieldLayout::
 FieldLayout ()
  : FieldLayout({},{})
 {
-
+  // Nothing to do here
 }
 
 FieldLayout::FieldLayout (const std::vector<FieldTag>& tags,
@@ -148,6 +148,27 @@ FieldLayout& FieldLayout::strip_dim (const int idim) {
   return *this;
 }
 
+void FieldLayout::add_dim (const FieldTag t, const int extent, const std::string& name,
+  bool prepend_instead_of_append)
+{
+  if (prepend_instead_of_append)
+  {
+    m_tags.insert(m_tags.begin(), t);
+    m_names.insert(m_names.begin(), name);
+    m_dims.insert(m_dims.begin(), extent);
+  }
+  else
+  {
+    m_tags.push_back(t);
+    m_names.push_back(name);
+    m_dims.push_back(extent);
+  }
+
+  ++m_rank;
+  set_extents();
+  compute_type();
+}
+
 FieldLayout&
 FieldLayout::append_dim (const FieldTag t, const int extent)
 {
@@ -157,19 +178,40 @@ FieldLayout::append_dim (const FieldTag t, const int extent)
 FieldLayout&
 FieldLayout::append_dim (const FieldTag t, const int extent, const std::string& name)
 {
-  m_tags.push_back(t);
-  m_names.push_back(name);
-  m_dims.push_back(extent);
+  add_dim(t, extent, name);
+  return *this;
+}
 
-  ++m_rank;
-  set_extents();
-  compute_type();
+FieldLayout&
+FieldLayout::prepend_dim (const FieldTag t, const int extent)
+{
+  return prepend_dim(t,extent,e2str(t));
+}
+
+FieldLayout&
+FieldLayout::prepend_dim (const FieldTag t, const int extent, const std::string& name)
+{
+  add_dim(t, extent, name, true);
   return *this;
 }
 
 FieldLayout FieldLayout::clone() const
 {
-  return *this;
+  FieldLayout copy(*this);
+  copy.set_extents();
+  return copy;
+}
+
+FieldLayout FieldLayout::transpose() const
+{
+  auto flt = clone();
+  std::reverse(flt.m_dims.begin(),flt.m_dims.end());
+  std::reverse(flt.m_tags.begin(),flt.m_tags.end());
+  std::reverse(flt.m_names.begin(),flt.m_names.end());
+
+  flt.set_extents();
+
+  return flt;
 }
 
 FieldLayout& FieldLayout::rename_dim (const int idim, const std::string& n)
@@ -250,9 +292,9 @@ FieldLayout& FieldLayout::reset_dim (const FieldTag t, const int extent, const b
 
 void FieldLayout::set_extents () {
   m_extents = decltype(m_extents)("",m_rank);
-  auto extents_h = Kokkos::create_mirror_view(m_extents);
-  std::copy_n(m_dims.begin(),m_rank,extents_h.data());
-  Kokkos::deep_copy(m_extents,extents_h);
+  m_extents_h = Kokkos::create_mirror_view(m_extents);
+  std::copy_n(m_dims.begin(),m_rank,m_extents_h.data());
+  Kokkos::deep_copy(m_extents,m_extents_h);
 }
 
 void FieldLayout::compute_type () {
@@ -271,7 +313,7 @@ void FieldLayout::compute_type () {
   const int n_element = count(tags,EL);
   const int n_column  = count(tags,COL);
   const int ngp       = count(tags,GP);
-  const int nvlevs    = count(tags,LEV) + count(tags,ILEV);
+  const int nvlevs    = count(tags,LEV) + count(tags,ILEV) + count(tags,LEVP);
   const int ncomps    = count(tags,CMP);
 
   // We don't care about TimeLevel
@@ -307,14 +349,14 @@ void FieldLayout::compute_type () {
   // Get the size of what's left
   const auto size = tags.size();
   auto is_lev_tag = [](const FieldTag t) {
-    return t==LEV or t==ILEV;
+    return t==LEV or t==ILEV or t==LEVP;
   };
   switch (size) {
     case 0:
       m_type = LayoutType::Scalar2D;
       break;
     case 1:
-      // The only tag left should be 'CMP', 'TL', or 'LEV'/'ILEV'
+      // The only tag left should be 'CMP', 'TL', or 'LEV'/'ILEV'/'LEVP'
       if (tags[0]==CMP || tags[0]==TL) {
         m_type = LayoutType::Vector2D;
       } else if (is_lev_tag(tags[0])) {
@@ -323,7 +365,7 @@ void FieldLayout::compute_type () {
       break;
     case 2:
       // Possible supported scenarios:
-      //  1) <CMP|TL,LEV|ILEV>
+      //  1) <CMP|TL,LEV|ILEV|LEVP>
       //  2) <TL,CMP>
       //  3) <CMP,CMP>
       if ( is_lev_tag(tags[1]) && (tags[0]==CMP || tags[0]==TL)) {
@@ -336,8 +378,8 @@ void FieldLayout::compute_type () {
       break;
     case 3:
       // The only supported scenarios are:
-      //  1) <TL,  CMP, LEV|ILEV>
-      //  2) <CMP, CMP, LEV|ILEV>
+      //  1) <TL,  CMP, LEV|ILEV|LEVP>
+      //  2) <CMP, CMP, LEV|ILEV|LEVP>
       if ( tags[0]==TL && tags[1]==CMP && is_lev_tag(tags[2])) {
         m_type = LayoutType::Tensor3D;
       } else if ( tags[0]==CMP && tags[1]==CMP && is_lev_tag(tags[2])) {
