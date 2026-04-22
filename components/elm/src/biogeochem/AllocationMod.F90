@@ -862,7 +862,7 @@ contains
                f1t = f1 /3.0_r8
                f1a = f1 /3.0_r8
                f1m = f1 /3.0_r8
-#endif               
+#endif 
                f3 = astem(p) / aleaf(p)
                f5 = arepr(p) / aleaf(p)
                g1 = 0.25_r8
@@ -923,11 +923,19 @@ contains
             cng = graincn(ivt(p))
             cpg = graincp(ivt(p))
             c_allometry(p) = (1._r8+g1)*(1._r8+f1+f5+f3*(1._r8+f2))
+#if defined(TAM)
+            n_allometry(p) = 1._r8/cnl + f1*(f1t/cnfrt + f1a/cnfra + f1m/cnfrm) + &
+                 f5/cng + (f3*f4*(1._r8+f2))/cnlw + &
+                 (f3*(1._r8-f4)*(1._r8+f2))/cndw
+            p_allometry(p) = 1._r8/cpl + f1*(f1t/cpfrt + f1a/cpfra + f1m/cpfrm) + &
+                 f5/cpg + (f3*f4*(1._r8+f2))/cplw + &
+                 (f3*(1._r8-f4)*(1._r8+f2))/cpdw
+#else
             n_allometry(p) = 1._r8/cnl + f1/cnfr + f5/cng + (f3*f4*(1._r8+f2))/cnlw + &
                  (f3*(1._r8-f4)*(1._r8+f2))/cndw
             p_allometry(p) = 1._r8/cpl + f1/cpfr + f5/cpg + (f3*f4*(1._r8+f2))/cplw + &
                  (f3*(1._r8-f4)*(1._r8+f2))/cpdw
-
+#endif
          else
             c_allometry(p) = 1._r8+g1+f1+f1*g1
 #if defined(TAM)

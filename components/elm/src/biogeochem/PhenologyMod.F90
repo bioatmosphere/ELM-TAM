@@ -2078,7 +2078,7 @@ contains
                bglfr_frootm(p) = 1._r8/(frootm_long(ivt(p))*dayspyr*secspday)
 #else
                bglfr_froot(p) = 1._r8/(froot_long(ivt(p))*dayspyr*secspday)
-#endif               
+#endif 
                !bglfr_froot(p) = 1._r8/(froot_long(ivt(p))*dayspyr*secspday)
             end if
 
@@ -2149,7 +2149,7 @@ contains
          t_soisno           =>    col_es%t_soisno                     , & ! Input:  [real(r8) (:,:) ]  soil temperature (Kelvin)  (-nlevsno+1:nlevgrnd)
 
          leaf_long          =>    veg_vp%leaf_long                    , & ! Input:  [real(r8) (:) ]  leaf longevity (yrs)
-   #if defined(TAM)
+#if defined(TAM)
          froott_long         =>    veg_vp%froott_long                   , & ! Input:  [real(r8) (:) ]  fine root longevity (yrs)
          bglfr_froott        =>    cnstate_vars%bglfr_froott_patch      , & ! Output: [real(r8) (:) ]  background fine root litterfall rate (1/s)
          froota_long         =>    veg_vp%froota_long                   , & ! Input:  [real(r8) (:) ]  fine root longevity (yrs)

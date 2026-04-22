@@ -122,8 +122,7 @@ contains
       call CarbonIsoFluxCalc(&
            isoveg_cf%transfer_froot_gr             , veg_cf%transfer_froot_gr, &
            isoveg_cs%gresp_xfer                   , veg_cs%gresp_xfer, &
-           num_soilp 
-
+           num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
 #endif
       call CarbonIsoFluxCalc(&
            isoveg_cf%livestemc_xfer_to_livestemc   , veg_cf%livestemc_xfer_to_livestemc, &
@@ -324,11 +323,6 @@ contains
            isoveg_cf%transfer_leaf_gr              , veg_cf%transfer_leaf_gr, &
            isoveg_cs%gresp_xfer                   , veg_cs%gresp_xfer, &
            num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
-      ! should this be under TAM?
-      !call CarbonIsoFluxCalc(&
-      !     isoveg_cf%transfer_froot_gr             , veg_cf%transfer_froot_gr, &
-      !     isoveg_cs%gresp_xfer                   , veg_cs%gresp_xfer, &
-      !     num_soilp                                            , filter_soilp, 1._r8, 0, isotope)
 
       call CarbonIsoFluxCalc(&
            isoveg_cf%transfer_livestem_gr          , veg_cf%transfer_livestem_gr, &

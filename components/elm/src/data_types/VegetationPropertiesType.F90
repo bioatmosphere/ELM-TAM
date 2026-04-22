@@ -556,7 +556,7 @@ contains
            this%livewdcp(m)   = livewdcp_obs(m)
            this%deadwdcp(m)   = deadwdcp_obs(m)
 #if defined(TAM)
-
+            !Left off for later development
 #else
             this%frootcn(m)    = frootcn_obs(m)
             this%frootcp(m)    = frootcp_obs(m)

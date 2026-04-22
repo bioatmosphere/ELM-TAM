@@ -102,10 +102,10 @@ contains
     real(r8)  :: dwt_deadstemc_seed(1:num_soilp_with_inactive) ! pft-level mass gain due to seeding of new area
     real(r8)  :: dwt_deadstemn_seed(1:num_soilp_with_inactive) ! pft-level mass gain due to seeding of new area
     real(r8)  :: dwt_npool_seed(1:num_soilp_with_inactive)     ! pft-level mass gain due to seeding of new area
-    real(r8)  :: dwt_frootc_to_litter(1:num_soilp_with_inactive)       ! pft-level mass loss due to weight shift
+!     real(r8)  :: dwt_frootc_to_litter(1:num_soilp_with_inactive)       ! pft-level mass loss due to weight shift
     real(r8)  :: dwt_livecrootc_to_litter(1:num_soilp_with_inactive)   ! pft-level mass loss due to weight shift
     real(r8)  :: dwt_deadcrootc_to_litter(1:num_soilp_with_inactive)   ! pft-level mass loss due to weight shift
-    real(r8)  :: dwt_frootn_to_litter(1:num_soilp_with_inactive)       ! pft-level mass loss due to weight shift
+!     real(r8)  :: dwt_frootn_to_litter(1:num_soilp_with_inactive)       ! pft-level mass loss due to weight shift
     real(r8)  :: dwt_livecrootn_to_litter(1:num_soilp_with_inactive)   ! pft-level mass loss due to weight shift
     real(r8)  :: dwt_deadcrootn_to_litter(1:num_soilp_with_inactive)   ! pft-level mass loss due to weight shift
     real(r8)  :: conv_cflux(1:num_soilp_with_inactive)                 ! pft-level mass loss due to weight shift
@@ -122,7 +122,7 @@ contains
     real(r8)  :: dwt_leafp_seed(1:num_soilp_with_inactive)             ! pft-level mass gain due to seeding of new area
     real(r8)  :: dwt_deadstemp_seed(1:num_soilp_with_inactive)         ! pft-level mass gain due to seeding of new area
     real(r8)  :: dwt_ppool_seed(1:num_soilp_with_inactive)             ! pft-level mass gain due to seeding of new area
-    real(r8)  :: dwt_frootp_to_litter(1:num_soilp_with_inactive)       ! pft-level mass loss due to weight shift
+!     real(r8)  :: dwt_frootp_to_litter(1:num_soilp_with_inactive)       ! pft-level mass loss due to weight shift
     real(r8)  :: dwt_livecrootp_to_litter(1:num_soilp_with_inactive)   ! pft-level mass loss due to weight shift
     real(r8)  :: dwt_deadcrootp_to_litter(1:num_soilp_with_inactive)   ! pft-level mass loss due to weight shift
     real(r8)  :: conv_pflux(1:num_soilp_with_inactive)                 ! pft-level mass loss due to weight shift
@@ -150,8 +150,32 @@ contains
     real(r8), allocatable :: prod10_c14flux(:)             ! pft-level mass loss due to weight shift
     real(r8), allocatable :: prod100_c14flux(:)            ! pft-level mass loss due to weight shift
     real(r8), allocatable :: crop_product_c14flux(:)       ! pft-level mass loss due to weight shift
-    real(r8) :: froot, croot
+    real(r8) :: croot
+#if defined(TAM)
+    real(r8) :: froott
+    real(r8) :: frt_flab, frt_fcel, frt_flig
+    real(r8)  :: dwt_froottc_to_litter(1:num_soilp_with_inactive)       ! pft-level mass loss due to weight shift
+    real(r8)  :: dwt_froottn_to_litter(1:num_soilp_with_inactive)       ! pft-level mass loss due to weight shift
+    real(r8)  :: dwt_froottp_to_litter(1:num_soilp_with_inactive)       ! pft-level mass loss due to weight shift
+
+    real(r8) :: froota
+    real(r8) :: fra_flab, fra_fcel, fra_flig
+    real(r8)  :: dwt_frootac_to_litter(1:num_soilp_with_inactive)       ! pft-level mass loss due to weight shift
+    real(r8)  :: dwt_frootan_to_litter(1:num_soilp_with_inactive)       ! pft-level mass loss due to weight shift
+    real(r8)  :: dwt_frootap_to_litter(1:num_soilp_with_inactive)       ! pft-level mass loss due to weight shift
+
+    real(r8) :: frootm
+    real(r8) :: frm_flab, frm_fcel, frm_flig
+    real(r8)  :: dwt_frootmc_to_litter(1:num_soilp_with_inactive)       ! pft-level mass loss due to weight shift
+    real(r8)  :: dwt_frootmn_to_litter(1:num_soilp_with_inactive)       ! pft-level mass loss due to weight shift
+    real(r8)  :: dwt_frootmp_to_litter(1:num_soilp_with_inactive)       ! pft-level mass loss due to weight shift
+#else
+    real(r8) :: froot
     real(r8) :: fr_flab, fr_fcel, fr_flig
+    real(r8)  :: dwt_frootc_to_litter(1:num_soilp_with_inactive)       ! pft-level mass loss due to weight shift
+    real(r8)  :: dwt_frootn_to_litter(1:num_soilp_with_inactive)       ! pft-level mass loss due to weight shift
+    real(r8)  :: dwt_frootp_to_litter(1:num_soilp_with_inactive)       ! pft-level mass loss due to weight shift
+#endif
     !-----------------------------------------------------------------------
 
     if ( use_c13 ) then
@@ -181,7 +205,7 @@ contains
       ! initialize all the pft-level local flux arrays
       dwt_leafc_seed(fp)           = 0._r8
       dwt_deadstemc_seed(fp)       = 0._r8
-      dwt_frootc_to_litter(fp)     = 0._r8
+     !  dwt_frootc_to_litter(fp)     = 0._r8
       dwt_livecrootc_to_litter(fp) = 0._r8
       dwt_deadcrootc_to_litter(fp) = 0._r8
       conv_cflux(fp)               = 0._r8
@@ -192,7 +216,7 @@ contains
       dwt_leafn_seed(fp)           = 0._r8
       dwt_deadstemn_seed(fp)       = 0._r8
       dwt_npool_seed(fp)           = 0._r8
-      dwt_frootn_to_litter(fp)     = 0._r8
+     !  dwt_frootn_to_litter(fp)     = 0._r8
       dwt_livecrootn_to_litter(fp) = 0._r8
       dwt_deadcrootn_to_litter(fp) = 0._r8
       conv_nflux(fp)               = 0._r8
@@ -203,13 +227,30 @@ contains
       dwt_leafp_seed(fp)           = 0._r8
       dwt_deadstemp_seed(fp)       = 0._r8
       dwt_ppool_seed(fp)           = 0._r8
-      dwt_frootp_to_litter(fp)     = 0._r8
+     !  dwt_frootp_to_litter(fp)     = 0._r8
       dwt_livecrootp_to_litter(fp) = 0._r8
       dwt_deadcrootp_to_litter(fp) = 0._r8
       conv_pflux(fp)               = 0._r8
       prod10_pflux(fp)             = 0._r8
       prod100_pflux(fp)            = 0._r8
       crop_product_pflux(fp)       = 0._r8
+#if defined(TAM)
+     dwt_froottc_to_litter(fp)     = 0._r8
+     dwt_froottn_to_litter(fp)     = 0._r8
+     dwt_froottp_to_litter(fp)     = 0._r8
+
+     dwt_frootac_to_litter(fp)     = 0._r8
+     dwt_frootan_to_litter(fp)     = 0._r8
+     dwt_frootap_to_litter(fp)     = 0._r8
+
+     dwt_frootmc_to_litter(fp)     = 0._r8
+     dwt_frootmn_to_litter(fp)     = 0._r8
+     dwt_frootmp_to_litter(fp)     = 0._r8
+#else
+     dwt_frootc_to_litter(fp)     = 0._r8
+     dwt_frootn_to_litter(fp)     = 0._r8
+     dwt_frootp_to_litter(fp)     = 0._r8
+#endif
     enddo
 
     if(use_c13) then
@@ -309,6 +350,58 @@ contains
        c = veg_pp%column(p)
        l = veg_pp%landunit(p)
 
+#if defined(TAM)
+       !call dyn_veg_cs_Adjustments() with 3 instead of 1 dwt_frootc
+       call dyn_veg_cs_Adjustments(    &
+            l, c, p,        &
+            prior_weights,                 &
+            patch_state_updater,           &
+            dwt_leafc_seed(fp),                &
+            dwt_deadstemc_seed(fp),            &
+            conv_cflux(fp),                    &
+            dwt_froottc_to_litter(fp),         &
+            dwt_frootac_to_litter(fp),         &
+            dwt_frootmc_to_litter(fp),         &
+            dwt_livecrootc_to_litter(fp),      &
+            dwt_deadcrootc_to_litter(fp),      &
+            prod10_cflux(fp),                  &
+            prod100_cflux(fp),                 &
+            crop_product_cflux(fp),            &
+            veg_cs                         &
+            )
+
+     !   call dyn_veg_cs_Adjustments(    &
+     !        l, c, p,        &
+     !        prior_weights,                 &
+     !        patch_state_updater,           &
+     !        dwt_leafc_seed(fp),                &
+     !        dwt_deadstemc_seed(fp),            &
+     !        conv_cflux(fp),                    &
+     !        dwt_frootac_to_litter(fp),          &
+     !        dwt_livecrootc_to_litter(fp),      &
+     !        dwt_deadcrootc_to_litter(fp),      &
+     !        prod10_cflux(fp),                  &
+     !        prod100_cflux(fp),                 &
+     !        crop_product_cflux(fp),            &
+     !        veg_cs                         &
+     !        )
+
+     !   call dyn_veg_cs_Adjustments(    &
+     !        l, c, p,        &
+     !        prior_weights,                 &
+     !        patch_state_updater,           &
+     !        dwt_leafc_seed(fp),                &
+     !        dwt_deadstemc_seed(fp),            &
+     !        conv_cflux(fp),                    &
+     !        dwt_frootmc_to_litter(fp),          &
+     !        dwt_livecrootc_to_litter(fp),      &
+     !        dwt_deadcrootc_to_litter(fp),      &
+     !        prod10_cflux(fp),                  &
+     !        prod100_cflux(fp),                 &
+     !        crop_product_cflux(fp),            &
+     !        veg_cs                         &
+     !        )
+#else
        call dyn_veg_cs_Adjustments(    &
             l, c, p,        &
             prior_weights,                 &
@@ -324,7 +417,7 @@ contains
             crop_product_cflux(fp),            &
             veg_cs                         &
             )
-
+#endif
     enddo
 
     if (use_c13) then
@@ -332,6 +425,9 @@ contains
          p = filter_soilp_with_inactive(fp)
          c = veg_pp%column(p)
          l = veg_pp%landunit(p)
+#if defined(TAM)
+
+#else
          call dyn_veg_cs_Adjustments( &
               l, c, p,        &
               prior_weights,                 &
@@ -347,6 +443,7 @@ contains
               crop_product_c13flux(fp),          &
               c13_veg_cs                     &
               )
+#endif
       enddo
     endif
 
@@ -355,6 +452,9 @@ contains
          p = filter_soilp_with_inactive(fp)
          c = veg_pp%column(p)
          l = veg_pp%landunit(p)
+#if defined(TAM)
+
+#else
          call dyn_veg_cs_Adjustments( &
               l, c, p,        &
               prior_weights,                 &
@@ -370,6 +470,7 @@ contains
               crop_product_c14flux(fp),          &
               c14_veg_cs                     &
             )
+#endif
       enddo
     endif
 
@@ -378,6 +479,26 @@ contains
        p = filter_soilp_with_inactive(fp)
        c = veg_pp%column(p)
        l = veg_pp%landunit(p)
+#if defined(TAM)
+       call dyn_veg_ns_Adjustments(    &
+            l,c,p,              &
+            prior_weights,                 &
+            patch_state_updater,           &
+            dwt_leafn_seed(fp),             &
+            dwt_deadstemn_seed(fp),         &
+            dwt_npool_seed(fp),             &
+            conv_nflux(fp),                 &
+            dwt_froottn_to_litter(fp),       &
+            dwt_frootan_to_litter(fp),       &
+            dwt_frootmn_to_litter(fp),       &
+            dwt_livecrootn_to_litter(fp),   &
+            dwt_deadcrootn_to_litter(fp),   &
+            prod10_nflux(fp),               &
+            prod100_nflux(fp),              &
+            crop_product_nflux(fp),         &
+            veg_ns                         &
+            )
+#else
        call dyn_veg_ns_Adjustments(    &
             l,c,p,              &
             prior_weights,                 &
@@ -394,12 +515,33 @@ contains
             crop_product_nflux(fp),         &
             veg_ns                         &
             )
+#endif
     enddo
 
     do fp = 1, num_soilp_with_inactive
        p = filter_soilp_with_inactive(fp)
        c = veg_pp%column(p)
        l = veg_pp%landunit(p)
+#if defined(TAM)
+       call dyn_veg_ps_Adjustments(    &
+           l,c,p,                  &
+           prior_weights,                 &
+           patch_state_updater,           &
+           dwt_leafp_seed(fp),            &
+           dwt_deadstemp_seed(fp),        &
+           dwt_ppool_seed(fp),            &
+           conv_pflux(fp),                &
+           dwt_froottp_to_litter(fp),      &
+           dwt_frootap_to_litter(fp),      &
+           dwt_frootmp_to_litter(fp),      &
+           dwt_livecrootp_to_litter(fp),  &
+           dwt_deadcrootp_to_litter(fp),  &
+           prod10_pflux(fp),              &
+           prod100_pflux(fp),             &
+           crop_product_pflux(fp),        &
+           veg_ps                         &
+           )
+#else
        call dyn_veg_ps_Adjustments(    &
            l,c,p,                  &
            prior_weights,                 &
@@ -416,6 +558,7 @@ contains
            crop_product_pflux(fp),        &
            veg_ps                         &
            )
+#endif
     end do
 
     ! calculate column-level seeding fluxes
@@ -500,40 +643,75 @@ contains
        c = veg_pp%column(p)
 
        ! fine and coarse root to litter and CWD slash carbon fluxes
+#if defined(TAM)
+       col_cf%dwt_slash_cflux(c) =            &
+            col_cf%dwt_slash_cflux(c)       + &
+            dwt_froottc_to_litter(fp)     /dt + &
+            dwt_frootac_to_litter(fp)     /dt + &
+            dwt_frootmc_to_litter(fp)     /dt + &
+            dwt_livecrootc_to_litter(fp) /dt + &
+            dwt_deadcrootc_to_litter(fp) /dt
+#else
        col_cf%dwt_slash_cflux(c) =            &
             col_cf%dwt_slash_cflux(c)       + &
             dwt_frootc_to_litter(fp)     /dt + &
             dwt_livecrootc_to_litter(fp) /dt + &
             dwt_deadcrootc_to_litter(fp) /dt
-
+#endif
        if ( use_c13 ) then
+#if defined(TAM)
+
+#else
           c13_col_cf%dwt_slash_cflux(c) =          &
                c13_col_cf%dwt_slash_cflux(c)     + &
                dwt_frootc13_to_litter(fp)     /dt + &
                dwt_livecrootc13_to_litter(fp) /dt + &
                dwt_deadcrootc13_to_litter(fp) /dt
+#endif
        endif
 
        if ( use_c14 ) then
+#if defined(TAM)
+
+#else
           c14_col_cf%dwt_slash_cflux(c) =          &
                c14_col_cf%dwt_slash_cflux(c)     + &
                dwt_frootc14_to_litter(fp)     /dt + &
                dwt_livecrootc14_to_litter(fp) /dt + &
                dwt_deadcrootc14_to_litter(fp) /dt
+#endif
        endif
-
+#if defined(TAM)
+       col_nf%dwt_slash_nflux(c) =            &
+            col_nf%dwt_slash_nflux(c)       + &
+            dwt_froottn_to_litter(fp)     /dt + &
+            dwt_frootan_to_litter(fp)     /dt + &
+            dwt_frootmn_to_litter(fp)     /dt + &
+            dwt_livecrootn_to_litter(fp) /dt + &
+            dwt_deadcrootn_to_litter(fp) /dt
+#else
        col_nf%dwt_slash_nflux(c) =            &
             col_nf%dwt_slash_nflux(c)       + &
             dwt_frootn_to_litter(fp)     /dt + &
             dwt_livecrootn_to_litter(fp) /dt + &
             dwt_deadcrootn_to_litter(fp) /dt
+#endif
 
+#if defined(TAM)
+       col_pf%dwt_slash_pflux(c) =            &
+            col_pf%dwt_slash_pflux(c)       + &
+            dwt_froottp_to_litter(fp)     /dt + &
+            dwt_frootap_to_litter(fp)     /dt + &
+            dwt_frootmp_to_litter(fp)     /dt + &
+            dwt_livecrootp_to_litter(fp) /dt + &
+            dwt_deadcrootp_to_litter(fp) /dt
+#else
        col_pf%dwt_slash_pflux(c) =            &
             col_pf%dwt_slash_pflux(c)       + &
             dwt_frootp_to_litter(fp)     /dt + &
             dwt_livecrootp_to_litter(fp) /dt + &
             dwt_deadcrootp_to_litter(fp) /dt
-
+#endif
     end do
 
     ! calculate pft-to-column for fluxes into litter and CWD pools
@@ -541,9 +719,142 @@ contains
       do fp = 1, num_soilp_with_inactive
          p = filter_soilp_with_inactive(fp)
          c = veg_pp%column(p)
-
-          froot   = cnstate_vars%froot_prof_patch(p,j)
           croot   = cnstate_vars%croot_prof_patch(p,j)
+#if defined(TAM)
+          froott   = cnstate_vars%froott_prof_patch(p,j)
+          froota   = cnstate_vars%froota_prof_patch(p,j)
+          frootm   = cnstate_vars%frootm_prof_patch(p,j)
+
+          frt_flab = veg_vp%frt_flab(veg_pp%itype(p))
+          frt_fcel = veg_vp%frt_fcel(veg_pp%itype(p))
+          frt_flig = veg_vp%frt_flig(veg_pp%itype(p))
+
+          fra_flab = veg_vp%fra_flab(veg_pp%itype(p))
+          fra_fcel = veg_vp%fra_fcel(veg_pp%itype(p))
+          fra_flig = veg_vp%fra_flig(veg_pp%itype(p))
+
+          frm_flab = veg_vp%frm_flab(veg_pp%itype(p))
+          frm_fcel = veg_vp%frm_fcel(veg_pp%itype(p))
+          frm_flig = veg_vp%frm_flig(veg_pp%itype(p))
+
+          ! fine root T litter carbon fluxes
+          col_cf%dwt_froottc_to_litr_met_c(c,j) = &
+               col_cf%dwt_froottc_to_litr_met_c(c,j) + &
+               (dwt_froottc_to_litter(fp)* frt_flab)/dt * froott
+
+          col_cf%dwt_froottc_to_litr_cel_c(c,j) = &
+               col_cf%dwt_froottc_to_litr_cel_c(c,j) + &
+               (dwt_froottc_to_litter(fp)* frt_fcel)/dt * froott
+
+          col_cf%dwt_froottc_to_litr_lig_c(c,j) = &
+               col_cf%dwt_froottc_to_litr_lig_c(c,j) + &
+               (dwt_froottc_to_litter(fp)* frt_flig)/dt * froott
+
+          ! fine root A litter carbon fluxes
+          col_cf%dwt_frootac_to_litr_met_c(c,j) = &
+               col_cf%dwt_frootac_to_litr_met_c(c,j) + &
+               (dwt_frootac_to_litter(fp)* fra_flab)/dt * froota
+
+          col_cf%dwt_frootac_to_litr_cel_c(c,j) = &
+               col_cf%dwt_frootac_to_litr_cel_c(c,j) + &
+               (dwt_frootac_to_litter(fp)* fra_fcel)/dt * froota
+
+          col_cf%dwt_frootac_to_litr_lig_c(c,j) = &
+               col_cf%dwt_frootac_to_litr_lig_c(c,j) + &
+               (dwt_frootac_to_litter(fp)* fra_flig)/dt * froota
+
+          ! fine root M litter carbon fluxes
+          col_cf%dwt_frootmc_to_litr_met_c(c,j) = &
+               col_cf%dwt_frootmc_to_litr_met_c(c,j) + &
+               (dwt_frootmc_to_litter(fp)* frm_flab)/dt * frootm
+
+          col_cf%dwt_frootmc_to_litr_cel_c(c,j) = &
+               col_cf%dwt_frootmc_to_litr_cel_c(c,j) + &
+               (dwt_frootmc_to_litter(fp)* frm_fcel)/dt * frootm
+
+          col_cf%dwt_frootmc_to_litr_lig_c(c,j) = &
+               col_cf%dwt_frootmc_to_litr_lig_c(c,j) + &
+               (dwt_frootmc_to_litter(fp)* frm_flig)/dt * frootm
+
+          ! fine root litter nitrogen fluxes
+          col_nf%dwt_froottn_to_litr_met_n(c,j) = &
+               col_nf%dwt_froottn_to_litr_met_n(c,j) + &
+               (dwt_froottn_to_litter(fp)* frt_flab)/dt * froott
+          
+          col_nf%dwt_froottn_to_litr_cel_n(c,j) = &
+               col_nf%dwt_froottn_to_litr_cel_n(c,j) + &
+               (dwt_froottn_to_litter(fp)* frt_fcel)/dt * froott
+
+          col_nf%dwt_froottn_to_litr_lig_n(c,j) = &
+               col_nf%dwt_froottn_to_litr_lig_n(c,j) + &
+               (dwt_froottn_to_litter(fp)* frt_flig)/dt * froott
+
+          ! fine root litter nitrogen fluxes
+          col_nf%dwt_frootan_to_litr_met_n(c,j) = &
+               col_nf%dwt_frootan_to_litr_met_n(c,j) + &
+               (dwt_frootan_to_litter(fp)* fra_flab)/dt * froota
+
+          col_nf%dwt_frootan_to_litr_cel_n(c,j) = &
+               col_nf%dwt_frootan_to_litr_cel_n(c,j) + &
+               (dwt_frootan_to_litter(fp)* fra_fcel)/dt * froota
+
+          col_nf%dwt_frootan_to_litr_lig_n(c,j) = &
+               col_nf%dwt_frootan_to_litr_lig_n(c,j) + &
+               (dwt_frootan_to_litter(fp)* fra_flig)/dt * froota
+
+          ! fine root M litter nitrogen fluxes
+          col_nf%dwt_frootmn_to_litr_met_n(c,j) = &
+               col_nf%dwt_frootmn_to_litr_met_n(c,j) + &
+               (dwt_frootmn_to_litter(fp)* frm_flab)/dt * frootm
+
+          col_nf%dwt_frootmn_to_litr_cel_n(c,j) = &
+               col_nf%dwt_frootmn_to_litr_cel_n(c,j) + &
+               (dwt_frootmn_to_litter(fp)* frm_fcel)/dt * frootm
+
+          col_nf%dwt_frootmn_to_litr_lig_n(c,j) = &
+               col_nf%dwt_frootmn_to_litr_lig_n(c,j) + &
+               (dwt_frootmn_to_litter(fp)* frm_flig)/dt * frootm
+
+          ! fine root T litter phosphorus fluxes
+          col_pf%dwt_froottp_to_litr_met_p(c,j) = &
+               col_pf%dwt_froottp_to_litr_met_p(c,j) + &
+               (dwt_froottp_to_litter(fp)* frt_flab)/dt * froott
+
+          col_pf%dwt_froottp_to_litr_cel_p(c,j) = &
+               col_pf%dwt_froottp_to_litr_cel_p(c,j) + &
+               (dwt_froottp_to_litter(fp)* frt_fcel)/dt * froott
+
+          col_pf%dwt_froottp_to_litr_lig_p(c,j) = &
+               col_pf%dwt_froottp_to_litr_lig_p(c,j) + &
+               (dwt_froottp_to_litter(fp)* frt_flig)/dt * froott
+
+          ! fine root A litter phosphorus fluxes
+          col_pf%dwt_frootap_to_litr_met_p(c,j) = &
+               col_pf%dwt_frootap_to_litr_met_p(c,j) + &
+               (dwt_frootap_to_litter(fp)* fra_flab)/dt * froota
+
+          col_pf%dwt_frootap_to_litr_cel_p(c,j) = &
+               col_pf%dwt_frootap_to_litr_cel_p(c,j) + &
+               (dwt_frootap_to_litter(fp)* fra_fcel)/dt * froota
+
+          col_pf%dwt_frootap_to_litr_lig_p(c,j) = &
+               col_pf%dwt_frootap_to_litr_lig_p(c,j) + &
+               (dwt_frootap_to_litter(fp)* fra_flig)/dt * froota
+
+          ! fine root M litter phosphorus fluxes
+          col_pf%dwt_frootmp_to_litr_met_p(c,j) = &
+               col_pf%dwt_frootmp_to_litr_met_p(c,j) + &
+               (dwt_frootmp_to_litter(fp)* frm_flab)/dt * frootm
+
+          col_pf%dwt_frootmp_to_litr_cel_p(c,j) = &
+               col_pf%dwt_frootmp_to_litr_cel_p(c,j) + &
+               (dwt_frootmp_to_litter(fp)* frm_fcel)/dt * frootm
+
+          col_pf%dwt_frootmp_to_litr_lig_p(c,j) = &
+               col_pf%dwt_frootmp_to_litr_lig_p(c,j) + &
+               (dwt_frootmp_to_litter(fp)* frm_flig)/dt * frootm
+#else
+          froot   = cnstate_vars%froot_prof_patch(p,j)
           fr_flab = veg_vp%fr_flab(veg_pp%itype(p))
           fr_fcel = veg_vp%fr_fcel(veg_pp%itype(p))
           fr_flig = veg_vp%fr_flig(veg_pp%itype(p))
@@ -566,8 +877,8 @@ contains
           col_nf%dwt_frootn_to_litr_met_n(c,j) = &
                col_nf%dwt_frootn_to_litr_met_n(c,j) + &
                (dwt_frootn_to_litter(fp)* fr_flab)/dt * froot
-          col_nf%dwt_frootn_to_litr_cel_n(c,j) = &
 
+          col_nf%dwt_frootn_to_litr_cel_n(c,j) = &
                col_nf%dwt_frootn_to_litr_cel_n(c,j) + &
                (dwt_frootn_to_litter(fp)* fr_fcel)/dt * froot
 
@@ -579,15 +890,15 @@ contains
           col_pf%dwt_frootp_to_litr_met_p(c,j) = &
                col_pf%dwt_frootp_to_litr_met_p(c,j) + &
                (dwt_frootp_to_litter(fp)* fr_flab)/dt * froot
-          col_pf%dwt_frootp_to_litr_cel_p(c,j) = &
 
+          col_pf%dwt_frootp_to_litr_cel_p(c,j) = &
                col_pf%dwt_frootp_to_litr_cel_p(c,j) + &
                (dwt_frootp_to_litter(fp)* fr_fcel)/dt * froot
 
           col_pf%dwt_frootp_to_litr_lig_p(c,j) = &
                col_pf%dwt_frootp_to_litr_lig_p(c,j) + &
                (dwt_frootp_to_litter(fp)* fr_flig)/dt * froot
-
+#endif
           ! livecroot fluxes to cwd
           col_cf%dwt_livecrootc_to_cwdc(c,j) = &
                col_cf%dwt_livecrootc_to_cwdc(c,j) + &
@@ -616,6 +927,10 @@ contains
 
           if ( use_c13 ) then
              ! C13 fine root litter fluxes
+
+#if defined(TAM)
+
+#else
              c13_col_cf%dwt_frootc_to_litr_met_c(c,j) = &
                   c13_col_cf%dwt_frootc_to_litr_met_c(c,j) + &
                   (dwt_frootc13_to_litter(fp)* fr_flab)/dt * froot
@@ -627,7 +942,7 @@ contains
              c13_col_cf%dwt_frootc_to_litr_lig_c(c,j) = &
                   c13_col_cf%dwt_frootc_to_litr_lig_c(c,j) + &
                   (dwt_frootc13_to_litter(fp)* fr_flig)/dt * froot
-
+#endif
              ! livecroot fluxes to cwd
              c13_col_cf%dwt_livecrootc_to_cwdc(c,j) = &
                   c13_col_cf%dwt_livecrootc_to_cwdc(c,j) + &
@@ -642,6 +957,9 @@ contains
 
           if ( use_c14 ) then
              ! C14 fine root litter fluxes
+#if defined(TAM)
+
+#else
              c14_col_cf%dwt_frootc_to_litr_met_c(c,j) = &
                   c14_col_cf%dwt_frootc_to_litr_met_c(c,j) + &
                   (dwt_frootc14_to_litter(fp)* fr_flab)/dt * froot
@@ -653,7 +971,7 @@ contains
              c14_col_cf%dwt_frootc_to_litr_lig_c(c,j) = &
                   c14_col_cf%dwt_frootc_to_litr_lig_c(c,j) + &
                   (dwt_frootc14_to_litter(fp)* fr_flig)/dt * froot
-
+#endif
              ! livecroot fluxes to cwd
              c14_col_cf%dwt_livecrootc_to_cwdc(c,j) = &
                   c14_col_cf%dwt_livecrootc_to_cwdc(c,j) + &
@@ -797,7 +1115,11 @@ contains
     if ( use_c13 ) then
        deallocate(dwt_leafc13_seed)
        deallocate(dwt_deadstemc13_seed)
+#if defined(TAM)
+
+#else
        deallocate(dwt_frootc13_to_litter)
+#endif
        deallocate(dwt_livecrootc13_to_litter)
        deallocate(dwt_deadcrootc13_to_litter)
        deallocate(conv_c13flux)
@@ -809,7 +1131,11 @@ contains
     if ( use_c14 ) then
        deallocate(dwt_leafc14_seed)
        deallocate(dwt_deadstemc14_seed)
+#if defined(TAM)
+
+#else
        deallocate(dwt_frootc14_to_litter)
+#endif
        deallocate(dwt_livecrootc14_to_litter)
        deallocate(dwt_deadcrootc14_to_litter)
        deallocate(conv_c14flux)
@@ -835,7 +1161,13 @@ contains
    cs%leafc(p)              = 0._r8
    cs%leafc_storage(p)      = 0._r8
    cs%leafc_xfer(p)         = 0._r8
+#if defined(TAM)
+   cs%froottc(p)             = 0._r8
+   cs%frootac(p)             = 0._r8
+   cs%frootmc(p)             = 0._r8
+#else
    cs%frootc(p)             = 0._r8
+#endif
    cs%frootc_storage(p)     = 0._r8
    cs%frootc_xfer(p)        = 0._r8
    cs%livestemc(p)          = 0._r8
@@ -877,7 +1209,13 @@ contains
    veg_ns%leafn(p)              = 0._r8
    veg_ns%leafn_storage(p)      = 0._r8
    veg_ns%leafn_xfer(p)         = 0._r8
+#if defined(TAM)
+   veg_ns%froottn(p)             = 0._r8
+   veg_ns%frootan(p)             = 0._r8
+   veg_ns%frootmn(p)             = 0._r8
+#else
    veg_ns%frootn(p)             = 0._r8
+#endif
    veg_ns%frootn_storage(p)     = 0._r8
    veg_ns%frootn_xfer(p)        = 0._r8
    veg_ns%livestemn(p)          = 0._r8
@@ -917,7 +1255,13 @@ contains
    veg_ps%leafp(p)              = 0._r8
    veg_ps%leafp_storage(p)      = 0._r8
    veg_ps%leafp_xfer(p)         = 0._r8
+#if defined(TAM)
+   veg_ps%froottp(p)             = 0._r8
+   veg_ps%frootap(p)             = 0._r8
+   veg_ps%frootmp(p)             = 0._r8
+#else
    veg_ps%frootp(p)             = 0._r8
+#endif
    veg_ps%frootp_storage(p)     = 0._r8
    veg_ps%frootp_xfer(p)        = 0._r8
    veg_ps%livestemp(p)          = 0._r8
@@ -988,7 +1332,13 @@ contains
    cnstate_vars%lgsf_patch(p)                  = 0._r8
    cnstate_vars%bglfr_patch(p)                 = 0._r8
    cnstate_vars%bglfr_leaf_patch(p)            = 0._r8
+#if defined(TAM)
+   cnstate_vars%bglfr_froott_patch(p)           = 0._r8
+   cnstate_vars%bglfr_froota_patch(p)           = 0._r8
+   cnstate_vars%bglfr_frootm_patch(p)           = 0._r8
+#else
    cnstate_vars%bglfr_froot_patch(p)           = 0._r8
+#endif
    cnstate_vars%bgtr_patch(p)                  = 0._r8
    cnstate_vars%annavg_t2m_patch(p)            = cnstate_vars%annavg_t2m_col(c)
    cnstate_vars%tempavg_t2m_patch(p)           = 0._r8
@@ -1030,7 +1380,13 @@ contains
    cf%plant_calloc(p)          = 0._r8
    cf%excess_cflux(p)          = 0._r8
    cf%prev_leafc_to_litter(p)  = 0._r8
+#if defined(TAM)
+   cf%prev_froottc_to_litter(p) = 0._r8
+   cf%prev_frootac_to_litter(p) = 0._r8
+   cf%prev_frootmc_to_litter(p) = 0._r8
+#else
    cf%prev_frootc_to_litter(p) = 0._r8
+#endif
    cf%availc(p)                = 0._r8
    cf%gpp_before_downreg(p)    = 0._r8
    cf%tempsum_npp(p)           = 0._r8
