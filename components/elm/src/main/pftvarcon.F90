@@ -393,6 +393,9 @@ contains
     ! !LOCAL VARIABLES:
     character(len=256) :: locfn ! local file name
     integer :: i,n              ! loop indices
+#if defined(TAM)
+    real(r8) :: tam_fsum        ! TAM fraction-triple sum for normalization
+#endif
     integer :: ier              ! error code
     type(file_desc_t) :: ncid   ! pio netCDF file id
     integer :: dimid            ! netCDF dimension id
@@ -870,6 +873,40 @@ contains
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
     call ncd_io('frm_flig',frm_flig(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))
+
+    ! --- TAM fraction-triple normalization ---
+    ! Param-file triples (froot[tam]_leaf; fr[tam]_flab/fcel/flig) must sum to 1
+    ! per PFT for mass conservation. Observed ~1e-6 deviations in the input
+    ! file produce a ~1e-8 gC/m^2/step column carbon balance leak (via cpool
+    ! -> froot[t/a/m]c allocation and gap/fire mortality -> litter routing).
+    ! Normalize here so downstream consumers (AllocationMod, GapMortalityMod,
+    ! FireMod) see exact sums.
+    do i = 0, npft-1
+       tam_fsum = froott_leaf(i) + froota_leaf(i) + frootm_leaf(i)
+       if (tam_fsum > 0._r8) then
+          froott_leaf(i) = froott_leaf(i) / tam_fsum
+          froota_leaf(i) = froota_leaf(i) / tam_fsum
+          frootm_leaf(i) = frootm_leaf(i) / tam_fsum
+       end if
+       tam_fsum = frt_flab(i) + frt_fcel(i) + frt_flig(i)
+       if (tam_fsum > 0._r8) then
+          frt_flab(i) = frt_flab(i) / tam_fsum
+          frt_fcel(i) = frt_fcel(i) / tam_fsum
+          frt_flig(i) = frt_flig(i) / tam_fsum
+       end if
+       tam_fsum = fra_flab(i) + fra_fcel(i) + fra_flig(i)
+       if (tam_fsum > 0._r8) then
+          fra_flab(i) = fra_flab(i) / tam_fsum
+          fra_fcel(i) = fra_fcel(i) / tam_fsum
+          fra_flig(i) = fra_flig(i) / tam_fsum
+       end if
+       tam_fsum = frm_flab(i) + frm_fcel(i) + frm_flig(i)
+       if (tam_fsum > 0._r8) then
+          frm_flab(i) = frm_flab(i) / tam_fsum
+          frm_fcel(i) = frm_fcel(i) / tam_fsum
+          frm_flig(i) = frm_flig(i) / tam_fsum
+       end if
+    end do
 #else
     call ncd_io('frootcn',frootcn(0:npft-1), 'read', ncid, readvar=readv, posNOTonfile=.true.)
     if ( .not. readv ) call endrun(msg=' ERROR: error in reading in pft data'//errMsg(__FILE__, __LINE__))

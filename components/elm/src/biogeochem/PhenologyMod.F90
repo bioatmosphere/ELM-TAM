@@ -2801,6 +2801,10 @@ contains
     integer :: fp           ! lake filter pft index
     real(r8):: t1           ! temporary variable
     real(r8) :: dt
+#if defined(TAM)
+    real(r8) :: wn_sum, wp_sum
+    real(r8) :: wn_t, wn_a, wn_m, wp_t, wp_a, wp_m
+#endif
     !-----------------------------------------------------------------------
 
     associate(                                                                                             &
@@ -2812,6 +2816,15 @@ contains
          onset_counter                       =>    cnstate_vars%onset_counter_patch                        , & ! Input:  [real(r8)  (:) ]  onset days counter
          bgtr                                =>    cnstate_vars%bgtr_patch                                 , & ! Input:  [real(r8)  (:) ]  background transfer growth rate (1/s)
 #if defined(TAM)
+         froott_leaf                          =>    veg_vp%froott_leaf                    , & ! Input:  [real(r8) (:) ]  transport fine-root class weight (sums to 1 with froota_leaf+frootm_leaf)
+         froota_leaf                          =>    veg_vp%froota_leaf                    , & ! Input:  [real(r8) (:) ]  absorptive fine-root class weight
+         frootm_leaf                          =>    veg_vp%frootm_leaf                    , & ! Input:  [real(r8) (:) ]  mycorrhizal fine-root class weight
+         froottcn                             =>    veg_vp%froottcn                       , & ! Input:  [real(r8) (:) ]  transport root C:N
+         frootacn                             =>    veg_vp%frootacn                       , & ! Input:  [real(r8) (:) ]  absorptive root C:N
+         frootmcn                             =>    veg_vp%frootmcn                       , & ! Input:  [real(r8) (:) ]  mycorrhizal root C:N
+         froottcp                             =>    veg_vp%froottcp                       , & ! Input:  [real(r8) (:) ]  transport root C:P
+         frootacp                             =>    veg_vp%frootacp                       , & ! Input:  [real(r8) (:) ]  absorptive root C:P
+         frootmcp                             =>    veg_vp%frootmcp                       , & ! Input:  [real(r8) (:) ]  mycorrhizal root C:P
          frootc_xfer_to_froottc               =>    veg_cf%frootc_xfer_to_froottc         , & ! Output:  [real(r8) (:) ]
          frootn_xfer_to_froottn               =>    veg_nf%frootn_xfer_to_froottn         , & ! Output:  [real(r8) (:) ]
          frootp_xfer_to_froottp               =>    veg_pf%frootp_xfer_to_froottp         , & ! Output:  [real(r8) (:) ]
@@ -2896,18 +2909,29 @@ contains
             leafp_xfer_to_leafp(p)   = t1 * leafp_xfer(p)
             !frootp_xfer_to_frootp(p) = t1 * frootp_xfer(p)
 #if defined(TAM)
-            ! Space for further improvement on TAM partition
-            frootc_xfer_to_froottc(p) = t1 * frootc_xfer(p)/3.0_r8
-            frootn_xfer_to_froottn(p) = t1 * frootn_xfer(p)/3.0_r8
-            frootp_xfer_to_froottp(p) = t1 * frootp_xfer(p)/3.0_r8
+            ! C split by class weight (f1X). N and P splits by demand share
+            ! (f1X/cn or f1X/cp) to match how the single xfer pool was filled
+            ! in AllocationMod: storage N gets f1*(f1t/cnfrt+f1a/cnfra+f1m/cnfrm).
+            wn_t = froott_leaf(ivt(p)) / froottcn(ivt(p))
+            wn_a = froota_leaf(ivt(p)) / frootacn(ivt(p))
+            wn_m = frootm_leaf(ivt(p)) / frootmcn(ivt(p))
+            wn_sum = wn_t + wn_a + wn_m
+            wp_t = froott_leaf(ivt(p)) / froottcp(ivt(p))
+            wp_a = froota_leaf(ivt(p)) / frootacp(ivt(p))
+            wp_m = frootm_leaf(ivt(p)) / frootmcp(ivt(p))
+            wp_sum = wp_t + wp_a + wp_m
 
-            frootc_xfer_to_frootac(p) = t1 * frootc_xfer(p)/3.0_r8
-            frootn_xfer_to_frootan(p) = t1 * frootn_xfer(p)/3.0_r8
-            frootp_xfer_to_frootap(p) = t1 * frootp_xfer(p)/3.0_r8
+            frootc_xfer_to_froottc(p) = t1 * frootc_xfer(p) * froott_leaf(ivt(p))
+            frootn_xfer_to_froottn(p) = t1 * frootn_xfer(p) * wn_t / wn_sum
+            frootp_xfer_to_froottp(p) = t1 * frootp_xfer(p) * wp_t / wp_sum
 
-            frootc_xfer_to_frootmc(p) = t1 * frootc_xfer(p)/3.0_r8
-            frootn_xfer_to_frootmn(p) = t1 * frootn_xfer(p)/3.0_r8
-            frootp_xfer_to_frootmp(p) = t1 * frootp_xfer(p)/3.0_r8
+            frootc_xfer_to_frootac(p) = t1 * frootc_xfer(p) * froota_leaf(ivt(p))
+            frootn_xfer_to_frootan(p) = t1 * frootn_xfer(p) * wn_a / wn_sum
+            frootp_xfer_to_frootap(p) = t1 * frootp_xfer(p) * wp_a / wp_sum
+
+            frootc_xfer_to_frootmc(p) = t1 * frootc_xfer(p) * frootm_leaf(ivt(p))
+            frootn_xfer_to_frootmn(p) = t1 * frootn_xfer(p) * wn_m / wn_sum
+            frootp_xfer_to_frootmp(p) = t1 * frootp_xfer(p) * wp_m / wp_sum
 #else
             frootc_xfer_to_frootc(p) = t1 * frootc_xfer(p)
             frootn_xfer_to_frootn(p) = t1 * frootn_xfer(p)
@@ -2943,18 +2967,27 @@ contains
             leafp_xfer_to_leafp(p)   = leafp_xfer(p) / dt
             !frootp_xfer_to_frootp(p) = frootp_xfer(p) / dt
 #if defined(TAM)
-            ! Space for further improvement
-            frootc_xfer_to_froottc(p) = frootc_xfer(p) / dt / 3.0_r8
-            frootn_xfer_to_froottn(p) = frootn_xfer(p) / dt / 3.0_r8
-            frootp_xfer_to_froottp(p) = frootp_xfer(p) / dt / 3.0_r8   
+            ! C split by class weight (f1X). N and P splits by demand share.
+            wn_t = froott_leaf(ivt(p)) / froottcn(ivt(p))
+            wn_a = froota_leaf(ivt(p)) / frootacn(ivt(p))
+            wn_m = frootm_leaf(ivt(p)) / frootmcn(ivt(p))
+            wn_sum = wn_t + wn_a + wn_m
+            wp_t = froott_leaf(ivt(p)) / froottcp(ivt(p))
+            wp_a = froota_leaf(ivt(p)) / frootacp(ivt(p))
+            wp_m = frootm_leaf(ivt(p)) / frootmcp(ivt(p))
+            wp_sum = wp_t + wp_a + wp_m
 
-            frootc_xfer_to_frootac(p) = frootc_xfer(p) / dt / 3.0_r8
-            frootn_xfer_to_frootan(p) = frootn_xfer(p) / dt / 3.0_r8
-            frootp_xfer_to_frootap(p) = frootp_xfer(p) / dt / 3.0_r8
+            frootc_xfer_to_froottc(p) = frootc_xfer(p) / dt * froott_leaf(ivt(p))
+            frootn_xfer_to_froottn(p) = frootn_xfer(p) / dt * wn_t / wn_sum
+            frootp_xfer_to_froottp(p) = frootp_xfer(p) / dt * wp_t / wp_sum
 
-            frootc_xfer_to_frootmc(p) = frootc_xfer(p) / dt / 3.0_r8
-            frootn_xfer_to_frootmn(p) = frootn_xfer(p) / dt / 3.0_r8
-            frootp_xfer_to_frootmp(p) = frootp_xfer(p) / dt / 3.0_r8
+            frootc_xfer_to_frootac(p) = frootc_xfer(p) / dt * froota_leaf(ivt(p))
+            frootn_xfer_to_frootan(p) = frootn_xfer(p) / dt * wn_a / wn_sum
+            frootp_xfer_to_frootap(p) = frootp_xfer(p) / dt * wp_a / wp_sum
+
+            frootc_xfer_to_frootmc(p) = frootc_xfer(p) / dt * frootm_leaf(ivt(p))
+            frootn_xfer_to_frootmn(p) = frootn_xfer(p) / dt * wn_m / wn_sum
+            frootp_xfer_to_frootmp(p) = frootp_xfer(p) / dt * wp_m / wp_sum
 #else
             frootc_xfer_to_frootc(p) = frootc_xfer(p) / dt
             frootn_xfer_to_frootn(p) = frootn_xfer(p) / dt
