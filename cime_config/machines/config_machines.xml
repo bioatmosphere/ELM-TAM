@@ -5854,7 +5854,7 @@ AMD EPYC 7713 64-Core (Milan) (256GB) and 4 nvidia A100'</DESC>
     <OS>LINUX</OS>
     <COMPILERS>gnu</COMPILERS>
     <MPILIBS>openmpi,mpi-serial</MPILIBS>
-    <CIME_OUTPUT_ROOT>/projects/hpcl-cli185/users/$ENV{USER}/e3sm_run</CIME_OUTPUT_ROOT>
+    <CIME_OUTPUT_ROOT>/scratch/$ENV{USER}/e3sm_run</CIME_OUTPUT_ROOT>
     <DIN_LOC_ROOT>/projects/hpcl-cli185/world-shared/e3sm/inputdata</DIN_LOC_ROOT>
     <DIN_LOC_ROOT_CLMFORC>/projects/hpcl-cli185/world-shared/e3sm/inputdata/atm/datm7</DIN_LOC_ROOT_CLMFORC>
     <DOUT_S_ROOT>$CIME_OUTPUT_ROOT/archive/$CASE</DOUT_S_ROOT>
