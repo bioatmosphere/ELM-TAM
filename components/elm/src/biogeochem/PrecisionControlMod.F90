@@ -677,8 +677,9 @@ contains
                if (abs(col_ns%smin_no3_vr(c,j)) < ncrit/1e4_r8) then
                   if ( col_ns%smin_no3_vr(c,j)  < 0._r8 ) then
 #ifndef _OPENACC
-                     write(iulog, *) '-10^-12 < smin_no3 < 0. resetting to zero.'
-                     write(iulog, *) 'smin_no3_vr_col(c,j), c, j: ', col_ns%smin_no3_vr(c,j), c, j
+                     !Per-column reset message silenced for global runs: 16k+
+                     !columns trip this every step and serialize to the shared
+                     !e3sm_log.txt stdout. The reset itself is unchanged.
                      col_ns%smin_no3_vr(c,j) = 0._r8
 #endif
                   endif
@@ -686,8 +687,9 @@ contains
                if (abs(col_ns%smin_nh4_vr(c,j)) < ncrit/1e4_r8) then
                   if ( col_ns%smin_nh4_vr(c,j)  < 0._r8 ) then
 #ifndef _OPENACC
-                     write(iulog, *) '-10^-12 < smin_nh4 < 0. resetting to zero.'
-                     write(iulog, *) 'smin_nh4_vr_col(c,j), c, j: ', col_ns%smin_nh4_vr(c,j), c, j
+                     !Per-column reset message silenced for global runs: 16k+
+                     !columns trip this every step and serialize to the shared
+                     !e3sm_log.txt stdout. The reset itself is unchanged.
                      col_ns%smin_nh4_vr(c,j) = 0._r8
 #endif
                   endif

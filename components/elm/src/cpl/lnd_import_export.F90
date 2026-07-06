@@ -77,6 +77,7 @@ contains
     integer  :: ng_all(100000)
     real(r8) :: swndf, swndr, swvdf, swvdr, ratio_rvrf, frac, q
     real(r8) :: thiscosz, avgcosz, szenith
+    real(r8) :: swtot, swmax, swscale
     integer  :: swrad_period_len, swrad_period_start, thishr, thismin
     real(r8) :: timetemp(2)
     real(r8) :: latixy(500000), longxy(500000)
@@ -224,10 +225,12 @@ contains
 
         if (atm2lnd_vars%loaded_bypassdata == 0) then
           !meteorological forcing
-          if (index(metdata_type, 'qian') .gt. 0) then 
-            atm2lnd_vars%metsource = 0   
+          if (index(metdata_type, 'qian') .gt. 0) then
+            atm2lnd_vars%metsource = 0
+          else if (index(metdata_type,'crujra') .gt. 0) then
+            atm2lnd_vars%metsource = 6
           else if (index(metdata_type,'cru') .gt. 0) then
-            atm2lnd_vars%metsource = 1  
+            atm2lnd_vars%metsource = 1
           else if (index(metdata_type,'site') .gt. 0) then 
             atm2lnd_vars%metsource = 2
           else if (index(metdata_type,'princeton') .gt. 0) then 
@@ -306,6 +309,8 @@ contains
             atm2lnd_vars%startyear_met      = 566 !76
             atm2lnd_vars%endyear_met_spinup = 590 !100
             atm2lnd_vars%endyear_met_trans  = 590 !100
+          else if (atm2lnd_vars%metsource == 6) then
+            atm2lnd_vars%endyear_met_trans  = 2024
           end if
 
           if (use_livneh) then 
@@ -346,7 +351,7 @@ contains
             do g3 = 1,ng
               thisdist = 100*((latixy(g3) - ldomain%latc(g))**2 + &
                               (longxy(g3) - ldomain%lonc(g))**2)**0.5
-              if (thisdist .lt. mindist) then 
+              if (thisdist .lt. mindist) then
                 mindist = thisdist
                 ztoget = zone_map(g3)
                 gtoget = grid_map(g3)
@@ -401,9 +406,11 @@ contains
                 else if (use_daymet .and. ztoget .ge. 16 .and. ztoget .le. 20) then 
                     metdata_fname = 'GSWP3_Daymet3_' // trim(metvars(v)) // '_1980-2010_z' // zst(2:3) // '.nc' 
                 end if
-            else if (atm2lnd_vars%metsource == 5) then 
+            else if (atm2lnd_vars%metsource == 5) then
                     !metdata_fname = 'WCYCL1850S.ne30_' // trim(metvars(v)) // '_0076-0100_z' // zst(2:3) // '.nc'
                     metdata_fname = 'CBGC1850S.ne30_' // trim(metvars(v)) // '_0566-0590_z' // zst(2:3) // '.nc'
+            else if (atm2lnd_vars%metsource == 6) then
+                metdata_fname = 'elmforc.TRENDY.c2025_0.5x0.5_' // trim(metvars(v)) // '_1901-2024_z' // zst(2:3) // '.nc'
             end if
   
             ierr = nf90_open(trim(metdata_bypass) // '/' // trim(metdata_fname), NF90_NOWRITE, met_ncids(v))
@@ -662,6 +669,21 @@ contains
                                -9.0039e-06_R8*swvdr**2 +8.1351e-09_R8*swvdr**3,0.01_R8))
             atm2lnd_vars%forc_solad_grc(g,1) = ratio_rvrf*swvdr
             atm2lnd_vars%forc_solai_grc(g,1) = (1._R8 - ratio_rvrf)*swvdf
+        end if
+        !Clamp disaggregated surface shortwave to the physical TOA maximum (~1370 W/m2 * cosz).
+        !The cpl_bypass cosz-disaggregation (wt2(4)=min(thiscosz/avgcosz,10)) can amplify
+        !daytime FSDS where avgcosz<<thiscosz (period-averaging misalignment), producing
+        !unphysical shortwave in equatorial cells that cooks the soil and trips the
+        !t_soisno>400K guard in lnd2atmMod.F90. Rescale all four bands to stay <= TOA flux.
+        swtot = atm2lnd_vars%forc_solad_grc(g,1) + atm2lnd_vars%forc_solad_grc(g,2) + &
+                atm2lnd_vars%forc_solai_grc(g,1) + atm2lnd_vars%forc_solai_grc(g,2)
+        swmax = 1370.0_R8 * thiscosz
+        if (swtot > swmax .and. swtot > 0.0_R8) then
+          swscale = swmax / swtot
+          atm2lnd_vars%forc_solad_grc(g,1) = atm2lnd_vars%forc_solad_grc(g,1) * swscale
+          atm2lnd_vars%forc_solad_grc(g,2) = atm2lnd_vars%forc_solad_grc(g,2) * swscale
+          atm2lnd_vars%forc_solai_grc(g,1) = atm2lnd_vars%forc_solai_grc(g,1) * swscale
+          atm2lnd_vars%forc_solai_grc(g,2) = atm2lnd_vars%forc_solai_grc(g,2) * swscale
         end if
         !Rain and snow
         if (atm2lnd_vars%metsource == 5) then 
@@ -1182,6 +1204,12 @@ contains
 
        ! Determine optional receive fields
        ! CO2 (and C13O2) concentration: constant, prognostic, or diagnostic
+#ifndef CPL_BYPASS
+       ! Under CPL_BYPASS the coupler fields (index_x2l_Sa_co2prog/diag) are never
+       ! registered, and CO2 is instead set below from co2_file. Also, the
+       ! CPL_BYPASS block further down assigns co2_type_idx = 1 inside this same
+       ! g-loop, so on iteration 2+ this branch would index x2l(0,i) and crash
+       ! under -fcheck=bounds. Skip it entirely for CPL_BYPASS.
        if (co2_type_idx == 0) then                    ! CO2 constant, value from namelist
          co2_ppmv_val = co2_ppmv
        else if (co2_type_idx == 1) then               ! CO2 prognostic, value from coupler field
@@ -1191,6 +1219,7 @@ contains
        else
          call endrun( sub//' ERROR: Invalid co2_type_idx, must be 0, 1, or 2 (constant, prognostic, or diagnostic)' )
        end if
+#endif
        ! Assign to topounits, with conversion from ppmv to partial pressure (Pa)
        ! If using C13, then get the c13ratio from elm_varcon (constant value for pre-industrial atmosphere)
 
